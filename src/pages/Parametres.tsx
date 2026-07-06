@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useConfig, patchConfig, useRoles, setUserRole, removeUserRole, creerCompte, exportBase, importBase, nouvelleSaison } from "../data";
+import { useConfig, patchConfig, setStockItem, useRoles, setUserRole, removeUserRole, creerCompte, exportBase, importBase, nouvelleSaison } from "../data";
 import { calc } from "../calc";
 import Icon from "../Icon";
 import type { Config, Role, Joueur } from "../types";
@@ -20,6 +20,7 @@ export default function Parametres() {
   const [newPwd, setNewPwd] = useState("");
   const [newRole, setNewRole] = useState<Role>("user");
   const [saisonSuivante, setSaisonSuivante] = useState("");
+  const [seuilTout, setSeuilTout] = useState(5);
   const [busy, setBusy] = useState("");
 
   const exporterJSON = async () => {
@@ -118,6 +119,28 @@ export default function Parametres() {
     alert("Paramètres enregistrés ✔");
   };
 
+  /* ----- maintenance stock : gestion sur tous les articles + seuil unique sur toutes les références ----- */
+  const nbRefs = (cfg?.catalogue || []).reduce((s, a) => s + a.tailles.length, 0);
+  const toutEnGestion = async () => {
+    if (!cfg) return;
+    if (!confirm("Activer la gestion du stock sur les " + cfg.catalogue.length + " article(s) ?\n(la remise décrémentera désormais la quantité)")) return;
+    await patchConfig({ catalogue: cfg.catalogue.map((a) => ({ ...a, gererStock: true })) });
+    setDraft(cfg ? { ...draft!, catalogue: cfg.catalogue.map((a) => ({ ...a, gererStock: true })) } : draft);
+    alert(cfg.catalogue.length + " article(s) mis en gestion ✔");
+  };
+  const seuilPartout = async () => {
+    if (!cfg) return;
+    const n = Math.max(0, Math.round(seuilTout));
+    if (!confirm("Mettre le seuil mini à " + n + " sur les " + nbRefs + " référence(s) (article × taille) ?")) return;
+    let done = 0;
+    for (const a of cfg.catalogue) for (const t of a.tailles) {
+      await setStockItem(a.nom, t, { seuilMini: n });
+      setBusy("Seuils… " + (++done) + "/" + nbRefs);
+    }
+    setBusy("");
+    alert(nbRefs + " référence(s) : seuil mini réglé à " + n + " ✔");
+  };
+
   return (
     <div className="params-tiles">
       <details className="param-tile" open>
@@ -169,6 +192,20 @@ export default function Parametres() {
               ))}
             </div>
           )}
+        </div>
+      </details>
+
+      <details className="param-tile">
+        <summary><span className="icobtn"><Icon name="box" size={17} className="ico-svg" /> Maintenance stock</span></summary>
+        <div className="pt-body">
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>Réglages en masse sur tout le stock ({cfg.catalogue.length} article{cfg.catalogue.length > 1 ? "s" : ""}, {nbRefs} référence{nbRefs > 1 ? "s" : ""}).</p>
+          <button className="mini" onClick={() => void toutEnGestion()}>Activer la gestion sur tous les articles</button>
+          <div className="editrow" style={{ marginTop: 12 }}>
+            <label style={{ margin: 0 }}>Seuil mini pour toutes les références</label>
+            <input className="w90" type="number" min={0} value={seuilTout} onChange={(e) => setSeuilTout(Math.max(0, Math.round(+e.target.value || 0)))} />
+            <button className="mini" onClick={() => void seuilPartout()}>Appliquer</button>
+          </div>
+          {busy && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{busy}</div>}
         </div>
       </details>
 

@@ -103,11 +103,21 @@ export default function Stock() {
     try {
       const lignes = await lireInventaireXlsx(file);
       if (!lignes.length) { alert("Aucune quantité réelle renseignée dans le fichier. Rien à importer."); return; }
-      const ecarts = lignes.filter((l) => l.reel !== l.base);
-      const apercu = ecarts.slice(0, 8).map((l) => "• " + l.article + " (" + l.taille + ") : " + l.base + " → " + l.reel).join("\n");
-      const msg = lignes.length + " référence(s) comptée(s), dont " + ecarts.length + " écart(s) avec la base."
-        + (ecarts.length ? "\n\n" + apercu + (ecarts.length > 8 ? "\n… et " + (ecarts.length - 8) + " autre(s)" : "") : "")
-        + "\n\nÉcraser la base avec les quantités réelles ?";
+      // base actuelle (peut avoir changé depuis l'export : remise / réception entre-temps)
+      const now = (l: { article: string; taille: string }) => stockMap.get(stockId(l.article, l.taille))?.quantite ?? 0;
+      const ecarts = lignes.filter((l) => l.reel !== now(l));
+      // dérive : la base a bougé entre l'export (l.base) et maintenant → un changement a eu lieu
+      const bouges = lignes.filter((l) => now(l) !== l.base);
+      const apercu = ecarts.slice(0, 8).map((l) => "• " + l.article + " (" + l.taille + ") : " + now(l) + " → " + l.reel).join("\n");
+      let msg = lignes.length + " référence(s) comptée(s), dont " + ecarts.length + " écart(s) avec la base actuelle."
+        + (ecarts.length ? "\n\n" + apercu + (ecarts.length > 8 ? "\n… et " + (ecarts.length - 8) + " autre(s)" : "") : "");
+      if (bouges.length) {
+        const bApercu = bouges.slice(0, 6).map((l) => "• " + l.article + " (" + l.taille + ") : export " + l.base + " → base actuelle " + now(l)).join("\n");
+        msg += "\n\n⚠️ " + bouges.length + " référence(s) ont CHANGÉ en base depuis l'export (remise ou réception entre-temps) :\n"
+          + bApercu + (bouges.length > 6 ? "\n… et " + (bouges.length - 6) + " autre(s)" : "")
+          + "\nLe compte de ton fichier sera quand même appliqué et écrasera ces changements.";
+      }
+      msg += "\n\nÉcraser la base avec les quantités réelles ?";
       if (!confirm(msg)) return;
       for (const l of lignes) await setStockItem(l.article, l.taille, { quantite: l.reel });
       alert(lignes.length + " référence(s) mise(s) à jour ✔" + (ecarts.length ? " (" + ecarts.length + " modifiée(s))" : ""));

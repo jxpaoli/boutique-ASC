@@ -264,7 +264,7 @@ export default function Stock() {
                                 <button onClick={() => void setStockItem(art.nom, r.t, { quantite: r.q + 1 })}>+</button>
                               </div>
                             </td>
-                            <td><input className="seuil" type="number" value={r.seuil} onChange={(e) => void setStockItem(art.nom, r.t, { seuilMini: Math.max(0, Math.round(+e.target.value || 0)) })} /></td>
+                            <td><span className="mlab">seuil</span><input className="seuil" type="number" value={r.seuil} onChange={(e) => void setStockItem(art.nom, r.t, { seuilMini: Math.max(0, Math.round(+e.target.value || 0)) })} /></td>
                             <td>{!r.tracked ? <span className="badge neutre">—</span> : r.rupture ? <span className="badge no">rupture</span> : r.bas ? <span className="badge part">bas</span> : <span className="badge ok">ok</span>}</td>
                             <td><button className="x" onClick={() => supprimerTaille(art.nom, r.t)}>✕</button></td>
                           </tr>
@@ -303,10 +303,14 @@ export default function Stock() {
                         <div className="muted" style={{ fontSize: 13 }}>Aucun écart : le stock compté correspondait déjà à la base.</div>
                       ) : (
                         <table className="stk">
-                          <thead><tr><th>Article</th><th>Taille</th><th>Avant</th><th>Après</th></tr></thead>
+                          <thead><tr><th>Référence</th><th>Avant</th><th>Après</th></tr></thead>
                           <tbody>
                             {[...inv.lignes].sort((a, b) => a.article.localeCompare(b.article) || a.taille.localeCompare(b.taille)).map((l, i) => (
-                              <tr key={i}><td>{l.article}</td><td className="stk-t">{l.taille}</td><td className="muted">{l.avant}</td><td><b>{l.apres}</b></td></tr>
+                              <tr key={i}>
+                                <td className="stk-t">{l.article} <span className="muted" style={{ fontWeight: 400 }}>· {l.taille}</span></td>
+                                <td><span className="mlab">avant</span><span className="muted">{l.avant}</span></td>
+                                <td><span className="mlab">après</span><b>{l.apres}</b></td>
+                              </tr>
                             ))}
                           </tbody>
                         </table>

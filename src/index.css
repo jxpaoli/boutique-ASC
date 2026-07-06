@@ -479,3 +479,36 @@ input[type="date"], input[type="number"], input[type="tel"] { color-scheme: dark
 .login-card { background: var(--card); }
 .login-card .muted { color: var(--muted); }
 .login-err { background: rgba(240, 133, 124, .12); color: var(--rouge); }
+
+/* Mini-étiquettes : masquées par défaut, révélées seulement sur mobile (voir @media) */
+.mlab { display: none; }
+
+/* ============================================================
+   MOBILE (<= 480px) — tout doit tenir dans la largeur, zéro scroll horizontal
+   ============================================================ */
+@media (max-width: 480px) {
+  html, body { overflow-x: hidden; }               /* garde-fou : jamais de scroll latéral de la page */
+
+  /* Filtres & catégories : passent à la ligne au lieu de scroller horizontalement */
+  .chips { flex-wrap: wrap; overflow-x: visible; }
+
+  /* Barre d'outils du stock : recherche pleine largeur, boutons dessous */
+  .stock-tools { flex-wrap: wrap; }
+  .stock-tools .search { flex: 1 1 100%; }
+
+  /* Rangées d'édition (remises, maintenance…) : passent à la ligne si trop larges */
+  .editrow, .aa-foot { flex-wrap: wrap; }
+
+  /* Tableaux stock / historique : chaque ligne se réagence pour tenir dans l'écran */
+  .stk thead { display: none; }
+  .stk, .stk tbody { display: block; width: 100%; }
+  .stk tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+    padding: 11px 2px; border-bottom: 1px solid var(--bord);
+  }
+  .stk tr:last-child { border-bottom: none; }
+  .stk td { padding: 0; border: none; }
+  .stk-t { flex: 1 1 100%; font-size: 15px; }       /* taille / référence en titre de ligne */
+  .stk .seuil { width: 54px; }
+  .mlab { display: inline; font-size: 11px; color: var(--muted); font-weight: 600; margin-right: 5px; }
+}

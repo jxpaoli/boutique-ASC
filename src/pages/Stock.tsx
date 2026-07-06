@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { useConfig, useJoueurs, useStock, useCommandes, setStockItem, stockId, patchConfig, addCommande, updateCommande, deleteCommande, adjustStock } from "../data";
+import { useConfig, useJoueurs, useStock, useCommandes, setStockItem, stockId, patchConfig, addCommande, updateCommande, deleteCommande, adjustStock, logInventaire, useInventaires, deleteInventaire } from "../data";
+import { useAuth } from "../auth";
 import { besoinsCommande } from "../calc";
 import { exportInventaireXlsx, lireInventaireXlsx } from "../xlsxStock";
 import Icon from "../Icon";
@@ -13,6 +14,8 @@ export default function Stock() {
   const joueurs = useJoueurs();
   const stock = useStock();
   const commandes = useCommandes();
+  const inventaires = useInventaires();
+  const email = useAuth().user?.email || "?";
   const fileRef = useRef<HTMLInputElement>(null);
   const [vue, setVue] = useState<"manquants" | "articles" | "commandes">("articles");
   const [alertesSeules, setAlertesSeules] = useState(false);
@@ -119,8 +122,11 @@ export default function Stock() {
       }
       msg += "\n\nÉcraser la base avec les quantités réelles ?";
       if (!confirm(msg)) return;
+      // trace des modifications réellement appliquées (avant → après), avant d'écraser
+      const modifs = ecarts.map((l) => ({ article: l.article, taille: l.taille, avant: now(l), apres: l.reel }));
       for (const l of lignes) await setStockItem(l.article, l.taille, { quantite: l.reel });
-      alert(lignes.length + " référence(s) mise(s) à jour ✔" + (ecarts.length ? " (" + ecarts.length + " modifiée(s))" : ""));
+      await logInventaire({ date: new Date().toISOString(), user: email, comptees: lignes.length, lignes: modifs });
+      alert(lignes.length + " référence(s) mise(s) à jour ✔" + (ecarts.length ? " (" + ecarts.length + " modifiée(s))" : "") + "\nInventaire enregistré dans l'historique.");
     } catch (e) {
       alert("Import impossible : " + (e instanceof Error ? e.message : "fichier illisible"));
     }
@@ -281,6 +287,38 @@ export default function Stock() {
               <input placeholder="Nouvel article" value={newArt} onChange={(e) => setNewArt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") ajouterArticle(); }} />
               <button className="btn-primary" style={{ width: "auto", marginTop: 0, padding: "11px 16px" }} onClick={ajouterArticle}>+ Ajouter</button>
             </div>
+
+            {(inventaires || []).length > 0 && (
+              <>
+                <h3 className="sec">Historique des inventaires</h3>
+                {[...(inventaires || [])].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((inv) => (
+                  <details key={inv.id} className="art-acc">
+                    <summary>
+                      <span className="aa-name icobtn"><Icon name="list" size={15} className="ico-svg" /> {new Date(inv.date).toLocaleDateString("fr-FR")} <span className="muted">{new Date(inv.date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span></span>
+                      <span className="aa-meta">{inv.comptees} comptée{inv.comptees > 1 ? "s" : ""} · {inv.lignes.length} modif.</span>
+                    </summary>
+                    <div className="aa-body">
+                      <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Par {inv.user}</div>
+                      {inv.lignes.length === 0 ? (
+                        <div className="muted" style={{ fontSize: 13 }}>Aucun écart : le stock compté correspondait déjà à la base.</div>
+                      ) : (
+                        <table className="stk">
+                          <thead><tr><th>Article</th><th>Taille</th><th>Avant</th><th>Après</th></tr></thead>
+                          <tbody>
+                            {[...inv.lignes].sort((a, b) => a.article.localeCompare(b.article) || a.taille.localeCompare(b.taille)).map((l, i) => (
+                              <tr key={i}><td>{l.article}</td><td className="stk-t">{l.taille}</td><td className="muted">{l.avant}</td><td><b>{l.apres}</b></td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                      <div className="aa-foot">
+                        <button className="lnk-danger" onClick={() => { if (confirm("Supprimer cette entrée d'historique ? (le stock n'est pas modifié)")) void deleteInventaire(inv.id); }}>Supprimer l'entrée</button>
+                      </div>
+                    </div>
+                  </details>
+                ))}
+              </>
+            )}
           </>
         );
       })()}

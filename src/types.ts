@@ -99,3 +99,12 @@ export interface StockItem {
   quantite: number;
   seuilMini: number;
 }
+
+// Journal d'inventaire : trace d'un import Excel (horodatage, auteur, ce qui a changé)
+export interface Inventaire {
+  id: string;
+  date: string;    // ISO (horodaté)
+  user: string;    // email de l'auteur
+  comptees: number; // nb de références comptées (case « réelle » remplie)
+  lignes: { article: string; taille: string; avant: number; apres: number }[]; // uniquement les modifications
+}

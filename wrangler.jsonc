@@ -1,8 +1,9 @@
 // Config du Worker boutiqueasc : site statique (dist/) servi en mode SPA.
+// Adresse officielle unique : https://packcasinca.master.corsica (workers.dev desactive).
 {
   "name": "boutiqueasc",
   "compatibility_date": "2026-07-01",
-  "workers_dev": true,
+  "workers_dev": false,
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

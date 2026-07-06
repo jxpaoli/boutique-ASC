@@ -99,10 +99,3 @@ export interface StockItem {
   quantite: number;
   seuilMini: number;
 }
-
-// Inventaire : photo datée des quantités en stock
-export interface Inventaire {
-  id: string;
-  date: string; // ISO
-  lignes: { article: string; taille: string; quantite: number }[];
-}

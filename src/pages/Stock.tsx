@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
-import { useConfig, useJoueurs, useStock, useCommandes, setStockItem, enregistrerInventaire, useInventaires, deleteInventaire, stockId, patchConfig, addCommande, updateCommande, deleteCommande, adjustStock } from "../data";
+import { useMemo, useRef, useState } from "react";
+import { useConfig, useJoueurs, useStock, useCommandes, setStockItem, stockId, patchConfig, addCommande, updateCommande, deleteCommande, adjustStock } from "../data";
 import { besoinsCommande } from "../calc";
+import { exportInventaireXlsx, lireInventaireXlsx } from "../xlsxStock";
 import Icon from "../Icon";
 import { COMMANDE_LABEL, type CatalogueItem, type Commande, type CommandeLigne, type StockItem } from "../types";
 
@@ -12,7 +13,7 @@ export default function Stock() {
   const joueurs = useJoueurs();
   const stock = useStock();
   const commandes = useCommandes();
-  const inventaires = useInventaires();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [vue, setVue] = useState<"manquants" | "articles" | "commandes">("articles");
   const [alertesSeules, setAlertesSeules] = useState(false);
   const [newSize, setNewSize] = useState<Record<string, string>>({});
@@ -97,10 +98,22 @@ export default function Stock() {
   const toggleGererStock = (nom: string, v: boolean) =>
     saveCatalogue(cfg.catalogue.map((c) => (c.nom === nom ? { ...c, gererStock: v } : c)));
 
-  const faireInventaire = async () => {
-    if (!confirm("Enregistrer un inventaire daté avec les quantités actuelles ?")) return;
-    await enregistrerInventaire(stock.map((s) => ({ article: s.article, taille: s.taille, quantite: s.quantite })));
-    alert("Inventaire enregistré ✔");
+  /* ----- inventaire : export Excel → correction terrain → réimport dans la base ----- */
+  const importInventaire = async (file: File) => {
+    try {
+      const lignes = await lireInventaireXlsx(file);
+      if (!lignes.length) { alert("Aucune quantité réelle renseignée dans le fichier. Rien à importer."); return; }
+      const ecarts = lignes.filter((l) => l.reel !== l.base);
+      const apercu = ecarts.slice(0, 8).map((l) => "• " + l.article + " (" + l.taille + ") : " + l.base + " → " + l.reel).join("\n");
+      const msg = lignes.length + " référence(s) comptée(s), dont " + ecarts.length + " écart(s) avec la base."
+        + (ecarts.length ? "\n\n" + apercu + (ecarts.length > 8 ? "\n… et " + (ecarts.length - 8) + " autre(s)" : "") : "")
+        + "\n\nÉcraser la base avec les quantités réelles ?";
+      if (!confirm(msg)) return;
+      for (const l of lignes) await setStockItem(l.article, l.taille, { quantite: l.reel });
+      alert(lignes.length + " référence(s) mise(s) à jour ✔" + (ecarts.length ? " (" + ecarts.length + " modifiée(s))" : ""));
+    } catch (e) {
+      alert("Import impossible : " + (e instanceof Error ? e.message : "fichier illisible"));
+    }
   };
 
   return (
@@ -194,8 +207,12 @@ export default function Stock() {
 
             <div className="stock-tools">
               <input className="search" type="search" placeholder="Rechercher un article…" value={artQ} onChange={(e) => setArtQ(e.target.value)} />
-              <button className="mini icobtn" onClick={() => void faireInventaire()}><Icon name="list" size={15} className="ico-svg" /> Inventaire</button>
+              <button className="mini icobtn" onClick={() => void exportInventaireXlsx(cfg, stock)}><Icon name="box" size={15} className="ico-svg" /> Exporter Excel</button>
+              <button className="mini icobtn" onClick={() => fileRef.current?.click()}><Icon name="list" size={15} className="ico-svg" /> Importer Excel</button>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void importInventaire(f); e.target.value = ""; }} />
             </div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Inventaire : exporte le stock, corrige la colonne « Qté réelle » dans Excel, puis réimporte le fichier.</div>
             <label className="check" style={{ marginBottom: 6 }}><input type="checkbox" checked={alertesSeules} onChange={(e) => setAlertesSeules(e.target.checked)} /> Seulement les alertes</label>
 
             {liste.map((art) => {
@@ -254,33 +271,6 @@ export default function Stock() {
               <input placeholder="Nouvel article" value={newArt} onChange={(e) => setNewArt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") ajouterArticle(); }} />
               <button className="btn-primary" style={{ width: "auto", marginTop: 0, padding: "11px 16px" }} onClick={ajouterArticle}>+ Ajouter</button>
             </div>
-
-            {(inventaires || []).length > 0 && (
-              <>
-                <h3 className="sec">Inventaires enregistrés</h3>
-                {[...(inventaires || [])].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((inv) => (
-                  <details key={inv.id} className="art-acc">
-                    <summary>
-                      <span className="aa-name icobtn"><Icon name="list" size={15} className="ico-svg" /> {new Date(inv.date).toLocaleDateString("fr-FR")} <span className="muted">{new Date(inv.date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span></span>
-                      <span className="aa-meta">{inv.lignes.length} réf. · {inv.lignes.reduce((s, l) => s + l.quantite, 0)} unités</span>
-                    </summary>
-                    <div className="aa-body">
-                      <table className="stk">
-                        <thead><tr><th>Article</th><th>Taille</th><th>Quantité</th></tr></thead>
-                        <tbody>
-                          {[...inv.lignes].sort((a, b) => a.article.localeCompare(b.article) || a.taille.localeCompare(b.taille)).map((l, i) => (
-                            <tr key={i}><td>{l.article}</td><td className="stk-t">{l.taille}</td><td>{l.quantite}</td></tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <div className="aa-foot">
-                        <button className="lnk-danger" onClick={() => { if (confirm("Supprimer cet inventaire ?")) void deleteInventaire(inv.id); }}>Supprimer</button>
-                      </div>
-                    </div>
-                  </details>
-                ))}
-              </>
-            )}
           </>
         );
       })()}

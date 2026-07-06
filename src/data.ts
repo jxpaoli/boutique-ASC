@@ -5,7 +5,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth"
 import { db, app } from "./firebase";
 import { stockId } from "./calc";
 import { DEFAULT_CONFIG } from "./defaultConfig";
-import type { Config, Joueur, StockItem, Preinscription, Role, Commande, Inventaire } from "./types";
+import type { Config, Joueur, StockItem, Preinscription, Role, Commande } from "./types";
 
 const configRef = doc(db, "config", "main");
 
@@ -78,21 +78,6 @@ export function useStock(): StockItem[] | null {
 export async function setStockItem(article: string, taille: string, patch: Partial<StockItem>) {
   const id = stockId(article, taille);
   await setDoc(doc(db, "stock", id), { article, taille, quantite: 0, seuilMini: 0, ...patch, id }, { merge: true });
-}
-export async function enregistrerInventaire(lignes: { article: string; taille: string; quantite: number }[]) {
-  await addDoc(collection(db, "inventaires"), { date: new Date().toISOString(), lignes });
-}
-export function useInventaires(): Inventaire[] | null {
-  const [list, setList] = useState<Inventaire[] | null>(null);
-  useEffect(() => {
-    return onSnapshot(collection(db, "inventaires"), (snap) => {
-      setList(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Inventaire, "id">) })));
-    });
-  }, []);
-  return list;
-}
-export async function deleteInventaire(id: string) {
-  await deleteDoc(doc(db, "inventaires", id));
 }
 
 /* ---------- Pré-inscriptions (formulaire public via QR) ---------- */

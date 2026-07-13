@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useConfig, patchConfig, setStockItem, useRoles, setUserRole, removeUserRole, creerCompte, exportBase, importBase, nouvelleSaison } from "../data";
+import { useConfig, patchConfig, setStockItem, useRoles, setUserRole, removeUserRole, creerCompte, resetUserPassword, exportBase, importBase, nouvelleSaison } from "../data";
 import { calc } from "../calc";
 import Icon from "../Icon";
 import type { Config, Role, Joueur } from "../types";
@@ -57,17 +57,32 @@ export default function Parametres() {
 
   const creer = async () => {
     const mail = newMail.trim();
-    if (!mail || newPwd.length < 6) { alert("Il faut un e-mail et un mot de passe d'au moins 6 caractères."); return; }
+    if (!mail || newPwd.length < 8) { alert("Il faut un e-mail et un mot de passe d'au moins 8 caractères."); return; }
     try {
-      await creerCompte(mail, newPwd, newRole);
+      const result = await creerCompte(mail, newPwd, newRole);
       setNewMail(""); setNewPwd("");
-      alert("Compte créé ✔ La personne peut se connecter avec cet e-mail et ce mot de passe.");
+      alert(result.existing
+        ? "Ce compte existait déjà dans Supabase : l’accès à Boutique ASC a été ajouté sans modifier son mot de passe."
+        : "Compte créé ✔ La personne peut se connecter avec cet e-mail et ce mot de passe.");
     } catch (e: unknown) {
       const code = e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "";
       alert(code.includes("email-already-in-use") ? "Cet e-mail a déjà un compte." :
         code.includes("invalid-email") ? "E-mail invalide." :
         code.includes("weak-password") ? "Mot de passe trop court (6 caractères min)." :
         "Création impossible.");
+    }
+  };
+
+  const changerMotDePasse = async (email: string) => {
+    const password = prompt("Nouveau mot de passe pour " + email + " (8 caractères minimum) :");
+    if (!password) return;
+    if (password.length < 8) { alert("8 caractères minimum."); return; }
+    if (!confirm("Ce compte Supabase peut servir dans plusieurs applications. Le nouveau mot de passe sera valable partout. Continuer ?")) return;
+    try {
+      await resetUserPassword(email, password);
+      alert("Mot de passe modifié ✔");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Modification impossible.");
     }
   };
 
@@ -84,7 +99,8 @@ export default function Parametres() {
   const togglePack = (which: "packs" | "packsGardien", art: string) => {
     const map = which === "packs" ? draft.packs : draft.packsGardien;
     const set = new Set(map[cat] || []);
-    set.has(art) ? set.delete(art) : set.add(art);
+    if (set.has(art)) set.delete(art);
+    else set.add(art);
     const ordered = draft.catalogue.map((c) => c.nom).filter((n) => set.has(n));
     upd({ [which]: { ...map, [cat]: ordered } } as Partial<Config>);
   };
@@ -240,13 +256,14 @@ export default function Parametres() {
       <details className="param-tile">
         <summary><span className="icobtn"><Icon name="users" size={17} className="ico-svg" /> Utilisateurs & droits</span></summary>
         <div className="pt-body">
-          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>Donne un rôle à chaque e-mail (le compte doit exister dans Firebase → Authentication). Appliqué tout de suite.</p>
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>Crée un compte Supabase ou donne l’accès à un compte existant. Les droits sont propres à Boutique ASC.</p>
           {roles && roles.map((r) => (
             <div className="editrow" key={r.email}>
               <span style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email}</span>
               <select value={r.role} style={{ flex: "none", width: 150 }} onChange={(e) => void setUserRole(r.email, e.target.value as Role)}>
                 {(["admin", "supervision", "user"] as Role[]).map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}
               </select>
+              <button className="mini" onClick={() => void changerMotDePasse(r.email)}>Mot de passe</button>
               <button className="x" onClick={() => { if (confirm("Retirer les droits de " + r.email + " ?")) void removeUserRole(r.email); }}>✕</button>
             </div>
           ))}
@@ -254,7 +271,7 @@ export default function Parametres() {
             <label>Créer un compte</label>
             <div className="editrow"><input placeholder="email@exemple.fr" value={newMail} onChange={(e) => setNewMail(e.target.value)} /></div>
             <div className="editrow">
-              <input type="password" placeholder="mot de passe (≥ 6)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+              <input type="password" placeholder="mot de passe (≥ 8)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
               <select value={newRole} style={{ flex: "none", width: 150 }} onChange={(e) => setNewRole(e.target.value as Role)}>
                 {(["user", "supervision", "admin"] as Role[]).map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}
               </select>

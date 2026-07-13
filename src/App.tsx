@@ -40,11 +40,17 @@ function Layout({ role }: { role: Role }) {
 }
 
 function AuthedApp() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const role = useRole(user?.email);
   if (loading) return <div className="full-center muted">Chargement…</div>;
   if (!user) return <Login />;
   if (role === null) return <div className="full-center muted">Chargement…</div>;
+  if (role === "denied") return (
+    <div className="full-center muted" style={{ flexDirection: "column", gap: 12 }}>
+      <div>Ce compte n’a pas accès à Boutique ASC.</div>
+      <button className="mini" onClick={() => void logout()}>Changer de compte</button>
+    </div>
+  );
   return (
     <Routes>
       <Route element={<Layout role={role} />}>

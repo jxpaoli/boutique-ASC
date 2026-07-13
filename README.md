@@ -1,33 +1,37 @@
-# Boutique AS Casinca — version mobile
+# Boutique AS Casinca
 
-Suivi des packs d'équipement du club (joueurs, packs, chèques, stock) — React + Vite + Firebase, PWA mobile.
+Application mobile de suivi des packs, joueurs, chèques, stock et commandes du club.
 
-## Démarrer en local
+Technologies : React, Vite, Supabase et Cloudflare Workers.
+
+## Développement local
+
 ```bash
 npm install
+copy .env.example .env
 npm run dev
 ```
 
-## Configuration Firebase (à faire une fois)
-1. Créer un projet sur https://console.firebase.google.com (gratuit).
-2. Activer **Firestore Database** et **Authentication → E-mail/Mot de passe**.
-3. Créer les comptes utilisateurs (Authentication → Users).
-4. Récupérer la **config web** (Paramètres du projet → Vos applications → SDK) et la copier dans un fichier `.env` (voir `.env.example`).
+Renseigner dans `.env` l’URL et la clé publique du projet Supabase. Une clé `service_role` ne doit jamais être placée dans l’application web.
 
-## Déploiement (Cloudflare Pages)
-- Connecter le dépôt GitHub à Cloudflare Pages.
-- Build command : `npm run build` — Output : `dist`.
-- Renseigner les variables `VITE_FIREBASE_*` dans Cloudflare Pages.
+## Supabase
 
-## Avancement
-- [x] P0 — squelette (shell, navigation, connexion Firebase câblée)
-- [x] P1 — authentification (login e-mail/mdp) + règles Firestore + modèle de données
-- [ ] P2 — liste joueurs
-- [x] P3 — fiche joueur (packs, catégories FFF, gardien, sac)
-- [x] P4 — chèques / dépôts
-- [x] P5 — paramètres
-- [x] P5-bis — stock & approvisionnement (inventaires, seuils mini, manquants)
-- [x] P6 — import des données existantes
-- [x] P7 — PWA + finitions mobile
+- Schéma isolé : `boutique_asc`
+- Migration : `supabase/migrations/202607130001_boutique_asc.sql`
+- Gestion sécurisée des comptes : `supabase/functions/manage-boutique-user`
+- Rôles applicatifs : `admin`, `supervision`, `user`
 
-➡️ Reste à faire : déploiement Cloudflare Pages (dépôt GitHub + variables d'env).
+Le schéma `boutique_asc` doit être ajouté aux schémas exposés par la Data API du projet.
+
+## Déploiement
+
+Un push sur `main` lance GitHub Actions puis déploie le Worker Cloudflare.
+
+Variables GitHub Actions requises :
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Secret GitHub Actions requis :
+
+- `CLOUDFLARE_API_TOKEN`

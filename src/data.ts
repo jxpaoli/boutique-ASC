@@ -6,6 +6,10 @@ import type { Config, Joueur, StockItem, Preinscription, Role, Commande, Inventa
 
 type DataRow = { id: string; data: Record<string, unknown> };
 
+function realtimeChannelName(scope: string) {
+  return `boutique_asc:${scope}:${crypto.randomUUID()}`;
+}
+
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
@@ -32,7 +36,7 @@ function useRows<T extends { id: string }>(table: string): T[] | null {
 
     void load();
     const channel = supabase
-      .channel(`boutique_asc:${table}`)
+      .channel(realtimeChannelName(table))
       .on("postgres_changes", { event: "*", schema: "boutique_asc", table }, () => void load())
       .subscribe();
 
@@ -84,7 +88,7 @@ export function useConfig(): Config | null {
       setConfig(c);
     };
     void load();
-    const channel = supabase.channel("boutique_asc:config")
+    const channel = supabase.channel(realtimeChannelName("config"))
       .on("postgres_changes", { event: "*", schema: "boutique_asc", table: "config" }, () => void load())
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };
@@ -145,7 +149,7 @@ export function useRole(email: string | null | undefined): Role | "denied" | nul
       setRole(error || !data ? "denied" : data.role as Role);
     };
     void load();
-    const channel = supabase.channel(`boutique_asc:role:${email}`)
+    const channel = supabase.channel(realtimeChannelName(`role:${email}`))
       .on("postgres_changes", { event: "*", schema: "boutique_asc", table: "memberships" }, () => void load())
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };
@@ -162,7 +166,7 @@ export function useRoles(): { email: string; role: Role }[] | null {
       if (active) setRows(error ? [] : (data as { email: string; role: Role }[]));
     };
     void load();
-    const channel = supabase.channel("boutique_asc:memberships")
+    const channel = supabase.channel(realtimeChannelName("memberships"))
       .on("postgres_changes", { event: "*", schema: "boutique_asc", table: "memberships" }, () => void load())
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };

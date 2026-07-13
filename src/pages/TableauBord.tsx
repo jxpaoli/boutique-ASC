@@ -57,8 +57,9 @@ export default function TableauBord() {
 
   return (
     <>
-      <h2 className="icobtn" style={{ margin: "4px 0 12px", justifyContent: "flex-start" }}><Icon name="chart" size={22} className="ico-svg" /> Tableau de bord</h2>
+      <h2 className="page-title icobtn"><Icon name="chart" size={22} className="ico-svg" /> Tableau de bord</h2>
 
+      <div className="dashboard-grid">
       <details className="param-tile" open>
         <summary><span className="icobtn"><Icon name="euro" size={18} className="ico-svg" /> Finances</span></summary>
         <div className="pt-body">
@@ -109,6 +110,7 @@ export default function TableauBord() {
           })}
         </div>
       </details>
+      </div>
     </>
   );
 }

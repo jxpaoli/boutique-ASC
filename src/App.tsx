@@ -17,7 +17,7 @@ function Layout({ role }: { role: Role }) {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="logo">ASC</div>
+        <div className="logo"><img src="/icon.svg" alt="AS Casinca" /></div>
         <div style={{ flex: 1 }}>
           <h1>Boutique AS Casinca</h1>
           <div className="sub">{role === "admin" ? "Admin" : role === "supervision" ? "Supervision" : "Boutique"}</div>

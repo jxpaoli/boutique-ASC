@@ -34,7 +34,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <div className="login-logo">ASC</div>
+        <div className="login-logo"><img src="/icon.svg" alt="AS Casinca" /></div>
         <h1>Boutique AS Casinca</h1>
         <p className="muted">Connecte-toi pour continuer</p>
 

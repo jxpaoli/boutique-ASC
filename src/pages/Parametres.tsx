@@ -64,10 +64,11 @@ export default function Parametres() {
         : "Compte créé ✔ La personne peut se connecter avec cet e-mail et ce mot de passe.");
     } catch (e: unknown) {
       const code = e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "";
+      const message = e instanceof Error ? e.message : "Création impossible.";
       alert(code.includes("email-already-in-use") ? "Cet e-mail a déjà un compte." :
         code.includes("invalid-email") ? "E-mail invalide." :
         code.includes("weak-password") ? "Mot de passe trop court (6 caractères min)." :
-        "Création impossible.");
+        message);
     }
   };
 

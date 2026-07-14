@@ -166,8 +166,25 @@ export function useRoles(): { email: string; role: Role }[] | null {
 }
 
 async function manageUser(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke("manage-boutique-user", { body });
-  if (error) throw error;
+  const { data: authData, error: authError } = await supabase.auth.getSession();
+  if (authError || !authData.session) throw new Error("Connexion administrateur expirée. Reconnecte-toi.");
+  const { data, error } = await supabase.functions.invoke("manage-boutique-user", {
+    body,
+    headers: { Authorization: `Bearer ${authData.session.access_token}` },
+  });
+  if (error) {
+    let message = error.message;
+    const context = "context" in error ? (error as { context?: Response }).context : undefined;
+    if (context) {
+      try {
+        const payload = await context.clone().json() as { error?: string };
+        if (payload.error) message = payload.error;
+      } catch {
+        // La réponse n'est pas forcément au format JSON.
+      }
+    }
+    throw new Error(message);
+  }
   if (!data?.ok) throw new Error(data?.error || "Gestion utilisateur impossible");
   return data as { ok: true; existing?: boolean };
 }

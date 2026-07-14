@@ -9,8 +9,6 @@ function download(name: string, content: string, type: string) {
   const a = document.createElement("a"); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u);
 }
 
-const ROLE_LABEL: Record<Role, string> = { admin: "Admin (tout)", supervision: "Supervision (sauf réglages)", user: "Boutique (sans argent)" };
-
 export default function Parametres() {
   const cfg = useConfig();
   const roles = useRoles();
@@ -94,7 +92,9 @@ export default function Parametres() {
 
   const upd = (patch: Partial<Config>) => setDraft({ ...draft, ...patch });
   const cat = packCat && draft.categories.includes(packCat) ? packCat : draft.categories[0] || "";
-  const articles = draft.catalogue.map((c) => c.nom).filter((n) => n !== "SAC");
+  const articles = draft.catalogue.map((c) => c.nom).filter((n) => n !== draft.reglesMetier.articleSac);
+  const taillesCatalogue = [...new Set(draft.catalogue.flatMap((c) => c.tailles))];
+  const roleLabel = (role: Role) => draft.reglesMetier.libellesRoles[role] || role;
 
   const togglePack = (which: "packs" | "packsGardien", art: string) => {
     const map = which === "packs" ? draft.packs : draft.packsGardien;
@@ -112,25 +112,75 @@ export default function Parametres() {
   const delRemise = (i: number) => upd({ remises: draft.remises.filter((_, j) => j !== i) });
 
   // catégories
-  const setCat = (i: number, v: string) => upd({ categories: draft.categories.map((c, j) => (j === i ? v : c)) });
+  const setCat = (i: number, v: string) => {
+    const ancien = draft.categories[i];
+    const renommeCle = (map: Record<string, string[]>) => { const next = { ...map }; if (ancien !== v && ancien in next) { next[v] = next[ancien]; delete next[ancien]; } return next; };
+    upd({
+      categories: draft.categories.map((c, j) => (j === i ? v : c)),
+      packs: renommeCle(draft.packs), packsGardien: renommeCle(draft.packsGardien),
+      licences: draft.licences.map((l) => ({ ...l, categoriesAutorisees: l.categoriesAutorisees.map((c) => c === ancien ? v : c) })),
+      reglesMetier: { ...draft.reglesMetier, categoriesAge: draft.reglesMetier.categoriesAge.map((r) => r.categorie === ancien ? { ...r, categorie: v } : r) },
+    });
+  };
   const addCat = () => upd({ categories: [...draft.categories, ""] });
-  const delCat = (i: number) => upd({ categories: draft.categories.filter((_, j) => j !== i) });
+  const delCat = (i: number) => {
+    const nom = draft.categories[i]; const packs = { ...draft.packs }; const packsGardien = { ...draft.packsGardien }; delete packs[nom]; delete packsGardien[nom];
+    upd({
+      categories: draft.categories.filter((_, j) => j !== i), packs, packsGardien,
+      licences: draft.licences.map((l) => ({ ...l, categoriesAutorisees: l.categoriesAutorisees.filter((c) => c !== nom) })),
+      reglesMetier: { ...draft.reglesMetier, categoriesAge: draft.reglesMetier.categoriesAge.filter((r) => r.categorie !== nom) },
+    });
+  };
+
+  // catalogue
+  const setArticleNom = (i: number, nom: string) => {
+    const ancien = draft.catalogue[i].nom;
+    const remplace = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).map(([categorie, liste]) => [categorie, liste.map((a) => a === ancien ? nom : a)]));
+    upd({
+      catalogue: draft.catalogue.map((a, j) => j === i ? { ...a, nom } : a),
+      packs: remplace(draft.packs), packsGardien: remplace(draft.packsGardien),
+      reglesMetier: { ...draft.reglesMetier, articleSac: draft.reglesMetier.articleSac === ancien ? nom : draft.reglesMetier.articleSac },
+    });
+  };
+  const delArticle = (i: number) => {
+    const nom = draft.catalogue[i].nom;
+    const catalogue = draft.catalogue.filter((_, j) => j !== i);
+    const retire = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).map(([categorie, liste]) => [categorie, liste.filter((a) => a !== nom)]));
+    const reglesMetier = draft.reglesMetier.articleSac === nom
+      ? { ...draft.reglesMetier, articleSac: catalogue[0]?.nom || "", tailleSac: catalogue[0]?.tailles[0] || "" }
+      : draft.reglesMetier;
+    upd({ catalogue, packs: retire(draft.packs), packsGardien: retire(draft.packsGardien), reglesMetier });
+  };
 
   // règlements
-  const setReg = (i: number, v: string) => upd({ reglements: draft.reglements.map((c, j) => (j === i ? v : c)) });
+  const setReg = (i: number, v: string) => {
+    const ancien = draft.reglements[i];
+    const cheques = { ...draft.reglesMetier.chequesParReglement };
+    if (ancien !== v) { cheques[v] = cheques[ancien] || 0; delete cheques[ancien]; }
+    upd({
+      reglements: draft.reglements.map((c, j) => (j === i ? v : c)),
+      reglesMetier: { ...draft.reglesMetier, chequesParReglement: cheques, reglementNonRegle: draft.reglesMetier.reglementNonRegle === ancien ? v : draft.reglesMetier.reglementNonRegle },
+    });
+  };
   const addReg = () => upd({ reglements: [...draft.reglements, ""] });
-  const delReg = (i: number) => upd({ reglements: draft.reglements.filter((_, j) => j !== i) });
+  const delReg = (i: number) => {
+    const nom = draft.reglements[i]; const cheques = { ...draft.reglesMetier.chequesParReglement }; delete cheques[nom];
+    upd({ reglements: draft.reglements.filter((_, j) => j !== i), reglesMetier: { ...draft.reglesMetier, chequesParReglement: cheques } });
+  };
 
   const enregistrer = async () => {
     await patchConfig({
       saison: draft.saison,
-      tarifs: draft.tarifs,
-      sacSiNouvelle: draft.sacSiNouvelle,
       remises: draft.remises.filter((r) => r.nom.trim()),
       categories: draft.categories.map((c) => c.trim()).filter(Boolean),
       reglements: draft.reglements.map((c) => c.trim()).filter(Boolean),
+      catalogue: draft.catalogue.filter((a) => a.nom.trim()).map((a) => ({ ...a, nom: a.nom.trim(), tailles: a.tailles.map((t) => t.trim()).filter(Boolean) })),
       packs: draft.packs,
       packsGardien: draft.packsGardien,
+      licences: draft.licences.filter((l) => l.code.trim()).map((l) => ({ ...l, code: l.code.trim(), label: l.label.trim() || l.code.trim() })),
+      reglesMetier: draft.reglesMetier,
+      tarifs: Object.fromEntries(draft.licences.filter((l) => l.code.trim()).map((l) => [l.code.trim(), l.tarif])),
+      sacSiNouvelle: draft.licences.some((l) => l.ajouteSac),
     });
     alert("Paramètres enregistrés ✔");
   };
@@ -164,13 +214,24 @@ export default function Parametres() {
         <div className="pt-body">
           <label>Saison</label>
           <input value={draft.saison} onChange={(e) => upd({ saison: e.target.value })} />
-          <div className="grid2" style={{ marginTop: 10 }}>
-            <div><label>NOUVEAU (€)</label><input type="number" value={draft.tarifs.NOUVEAU} onChange={(e) => upd({ tarifs: { ...draft.tarifs, NOUVEAU: +e.target.value } })} /></div>
-            <div><label>RENOUV. (€)</label><input type="number" value={draft.tarifs["RENOUV."]} onChange={(e) => upd({ tarifs: { ...draft.tarifs, "RENOUV.": +e.target.value } })} /></div>
-          </div>
-          <label>LICENCE seule (€)</label>
-          <input type="number" value={draft.tarifs.LICENCE} onChange={(e) => upd({ tarifs: { ...draft.tarifs, LICENCE: +e.target.value } })} />
-          <label className="check"><input type="checkbox" checked={draft.sacSiNouvelle} onChange={(e) => upd({ sacSiNouvelle: e.target.checked })} /> <Icon name="bag" size={15} className="ico-svg" /> Sac pour les nouvelles licences</label>
+          <h3 className="sec">Types de licence</h3>
+          <p className="muted" style={{ fontSize: 12 }}>Catégories autorisées : sépare les noms par des virgules. Laisse vide pour toutes les catégories.</p>
+          {draft.licences.map((lic, i) => (
+            <div className="card" key={i}>
+              <div className="grid2">
+                <div><label>Code</label><input value={lic.code} onChange={(e) => upd({ licences: draft.licences.map((l, j) => j === i ? { ...l, code: e.target.value } : l) })} /></div>
+                <div><label>Libellé</label><input value={lic.label} onChange={(e) => upd({ licences: draft.licences.map((l, j) => j === i ? { ...l, label: e.target.value } : l) })} /></div>
+              </div>
+              <label>Tarif (€)</label>
+              <input type="number" value={lic.tarif} onChange={(e) => upd({ licences: draft.licences.map((l, j) => j === i ? { ...l, tarif: +e.target.value || 0 } : l) })} />
+              <label>Catégories autorisées</label>
+              <input value={lic.categoriesAutorisees.join(", ")} onChange={(e) => upd({ licences: draft.licences.map((l, j) => j === i ? { ...l, categoriesAutorisees: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) } : l) })} />
+              <label className="check"><input type="checkbox" checked={lic.ajouteSac} onChange={(e) => upd({ licences: draft.licences.map((l, j) => j === i ? { ...l, ajouteSac: e.target.checked } : l) })} /> Ajouter le sac</label>
+              <label className="check"><input type="radio" name="licence-defaut" checked={!!lic.defaut} onChange={() => upd({ licences: draft.licences.map((l, j) => ({ ...l, defaut: j === i })) })} /> Licence par défaut</label>
+              <button className="lnk-danger" onClick={() => upd({ licences: draft.licences.filter((_, j) => j !== i) })}>Supprimer ce type</button>
+            </div>
+          ))}
+          <button className="mini" onClick={() => upd({ licences: [...draft.licences, { code: "", label: "", tarif: 0, categoriesAutorisees: [], ajouteSac: false }] })}>+ Ajouter un type de licence</button>
         </div>
       </details>
 
@@ -239,15 +300,94 @@ export default function Parametres() {
       </details>
 
       <details className="param-tile">
+        <summary><span className="icobtn"><Icon name="box" size={17} className="ico-svg" /> Catalogue & tailles</span></summary>
+        <div className="pt-body">
+          <p className="muted" style={{ fontSize: 12 }}>Les tailles sont séparées par des virgules. Renommer un article met aussi à jour les packs.</p>
+          {draft.catalogue.map((article, i) => (
+            <div className="card" key={i}>
+              <label>Article</label>
+              <input value={article.nom} onChange={(e) => setArticleNom(i, e.target.value)} />
+              <label>Tailles</label>
+              <input value={article.tailles.join(", ")} onChange={(e) => upd({ catalogue: draft.catalogue.map((a, j) => j === i ? { ...a, tailles: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) } : a) })} />
+              <label className="check"><input type="checkbox" checked={!!article.gererStock} onChange={(e) => upd({ catalogue: draft.catalogue.map((a, j) => j === i ? { ...a, gererStock: e.target.checked } : a) })} /> Gérer les quantités en stock</label>
+              <button className="lnk-danger" onClick={() => delArticle(i)}>Supprimer l’article</button>
+            </div>
+          ))}
+          <button className="mini" onClick={() => upd({ catalogue: [...draft.catalogue, { nom: "", tailles: [], gererStock: false }] })}>+ Ajouter un article</button>
+        </div>
+      </details>
+
+      <details className="param-tile">
+        <summary><span className="icobtn"><Icon name="gear" size={17} className="ico-svg" /> Règles automatiques</span></summary>
+        <div className="pt-body">
+          <div className="grid2">
+            <div><label>Âge adulte</label><input type="number" value={draft.reglesMetier.ageAdulte} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, ageAdulte: Math.max(0, +e.target.value || 0) } })} /></div>
+            <div><label>Règlement « non réglé »</label><select value={draft.reglesMetier.reglementNonRegle} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, reglementNonRegle: e.target.value } })}>{draft.reglements.map((r) => <option key={r}>{r}</option>)}</select></div>
+          </div>
+
+          <h3 className="sec">Sac automatique</h3>
+          <div className="grid2">
+            <div><label>Article</label><select value={draft.reglesMetier.articleSac} onChange={(e) => { const article = e.target.value; upd({ reglesMetier: { ...draft.reglesMetier, articleSac: article, tailleSac: draft.catalogue.find((c) => c.nom === article)?.tailles[0] || "" } }); }}>{draft.catalogue.map((c) => <option key={c.nom}>{c.nom}</option>)}</select></div>
+            <div><label>Taille</label><select value={draft.reglesMetier.tailleSac} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, tailleSac: e.target.value } })}>{(draft.catalogue.find((c) => c.nom === draft.reglesMetier.articleSac)?.tailles || []).map((t) => <option key={t}>{t}</option>)}</select></div>
+          </div>
+
+          <h3 className="sec">Catégorie selon l’âge</h3>
+          {draft.reglesMetier.categoriesAge.map((r, i) => (
+            <div className="editrow" key={i}>
+              <select value={r.categorie} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, categoriesAge: draft.reglesMetier.categoriesAge.map((x, j) => j === i ? { ...x, categorie: e.target.value } : x) } })}>{draft.categories.map((c) => <option key={c}>{c}</option>)}</select>
+              <input className="w90" type="number" title="Âge minimum" value={r.ageMin} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, categoriesAge: draft.reglesMetier.categoriesAge.map((x, j) => j === i ? { ...x, ageMin: +e.target.value || 0 } : x) } })} />
+              <span>à</span>
+              <input className="w90" type="number" title="Âge maximum" value={r.ageMax} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, categoriesAge: draft.reglesMetier.categoriesAge.map((x, j) => j === i ? { ...x, ageMax: +e.target.value || 0 } : x) } })} />
+              <button className="x" onClick={() => upd({ reglesMetier: { ...draft.reglesMetier, categoriesAge: draft.reglesMetier.categoriesAge.filter((_, j) => j !== i) } })}>✕</button>
+            </div>
+          ))}
+          <button className="mini" onClick={() => upd({ reglesMetier: { ...draft.reglesMetier, categoriesAge: [...draft.reglesMetier.categoriesAge, { categorie: draft.categories[0] || "", ageMin: 0, ageMax: 0 }] } })}>+ Ajouter une tranche</button>
+
+          <h3 className="sec">Correspondance taille / âge</h3>
+          {Object.entries(draft.reglesMetier.taillesParAge).map(([taille, age]) => (
+            <div className="editrow" key={taille}>
+              <select value={taille} onChange={(e) => { const next = { ...draft.reglesMetier.taillesParAge }; delete next[taille]; next[e.target.value] = age; upd({ reglesMetier: { ...draft.reglesMetier, taillesParAge: next } }); }}>{taillesCatalogue.map((t) => <option key={t}>{t}</option>)}</select>
+              <input className="w90" type="number" value={age} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, taillesParAge: { ...draft.reglesMetier.taillesParAge, [taille]: +e.target.value || 0 } } })} />
+              <span className="unit">ans</span>
+              <button className="x" onClick={() => { const next = { ...draft.reglesMetier.taillesParAge }; delete next[taille]; upd({ reglesMetier: { ...draft.reglesMetier, taillesParAge: next } }); }}>✕</button>
+            </div>
+          ))}
+          <button className="mini" onClick={() => { const taille = taillesCatalogue.find((t) => draft.reglesMetier.taillesParAge[t] == null); if (taille) upd({ reglesMetier: { ...draft.reglesMetier, taillesParAge: { ...draft.reglesMetier.taillesParAge, [taille]: 0 } } }); }}>+ Ajouter une taille</button>
+          <label>Ordre préféré des tailles adultes (séparées par des virgules)</label>
+          <input value={draft.reglesMetier.ordreTaillesAdultes.join(", ")} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, ordreTaillesAdultes: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) } })} />
+        </div>
+      </details>
+
+      <details className="param-tile">
         <summary><span className="icobtn"><Icon name="card" size={17} className="ico-svg" /> Modes de règlement</span></summary>
         <div className="pt-body">
           {draft.reglements.map((c, i) => (
             <div className="editrow" key={i}>
               <input value={c} onChange={(e) => setReg(i, e.target.value)} />
+              <input className="w90" type="number" min={0} title="Nombre de chèques" value={draft.reglesMetier.chequesParReglement[c] || 0} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, chequesParReglement: { ...draft.reglesMetier.chequesParReglement, [c]: Math.max(0, Math.round(+e.target.value || 0)) } } })} />
+              <span className="unit">chq.</span>
               <button className="x" onClick={() => delReg(i)}>✕</button>
             </div>
           ))}
           <button className="mini" onClick={addReg}>+ Ajouter un mode</button>
+          <div className="grid2" style={{ marginTop: 12 }}>
+            <div><label>Jour mensuel d’encaissement</label><input type="number" min={1} max={28} value={draft.reglesMetier.jourEncaissementCheques} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, jourEncaissementCheques: Math.max(1, Math.min(28, Math.round(+e.target.value || 1))) } })} /></div>
+            <div><label>Délai minimum du 1er chèque (jours)</label><input type="number" min={0} value={draft.reglesMetier.delaiPremierChequeJours} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, delaiPremierChequeJours: Math.max(0, Math.round(+e.target.value || 0)) } })} /></div>
+          </div>
+        </div>
+      </details>
+
+      <details className="param-tile">
+        <summary><span className="icobtn"><Icon name="tag" size={17} className="ico-svg" /> Libellés de l’application</span></summary>
+        <div className="pt-body">
+          <h3 className="sec">Rôles</h3>
+          {(["admin", "supervision", "user"] as Role[]).map((role) => (
+            <div className="editrow" key={role}><span className="w90">{role}</span><input value={draft.reglesMetier.libellesRoles[role] || ""} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, libellesRoles: { ...draft.reglesMetier.libellesRoles, [role]: e.target.value } } })} /></div>
+          ))}
+          <h3 className="sec">Commandes</h3>
+          {(["apasser", "encours", "recue"] as const).map((statut) => (
+            <div className="editrow" key={statut}><span className="w90">{statut}</span><input value={draft.reglesMetier.libellesCommandes[statut] || ""} onChange={(e) => upd({ reglesMetier: { ...draft.reglesMetier, libellesCommandes: { ...draft.reglesMetier.libellesCommandes, [statut]: e.target.value } } })} /></div>
+          ))}
         </div>
       </details>
 
@@ -261,7 +401,7 @@ export default function Parametres() {
             <div className="editrow" key={r.email}>
               <span style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email}</span>
               <select value={r.role} style={{ flex: "none", width: 150 }} onChange={(e) => void setUserRole(r.email, e.target.value as Role)}>
-                {(["admin", "supervision", "user"] as Role[]).map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}
+                {(["admin", "supervision", "user"] as Role[]).map((x) => <option key={x} value={x}>{roleLabel(x)}</option>)}
               </select>
               <button className="mini" onClick={() => void changerMotDePasse(r.email)}>Mot de passe</button>
               <button className="x" onClick={() => { if (confirm("Retirer les droits de " + r.email + " ?")) void removeUserRole(r.email); }}>✕</button>
@@ -273,7 +413,7 @@ export default function Parametres() {
             <div className="editrow">
               <input type="password" placeholder="mot de passe (≥ 8)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
               <select value={newRole} style={{ flex: "none", width: 150 }} onChange={(e) => setNewRole(e.target.value as Role)}>
-                {(["user", "supervision", "admin"] as Role[]).map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}
+                {(["user", "supervision", "admin"] as Role[]).map((x) => <option key={x} value={x}>{roleLabel(x)}</option>)}
               </select>
             </div>
             <button className="btn-primary" onClick={() => void creer()}>+ Créer le compte</button>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { boutiqueDb, supabase } from "./supabase";
 import { stockId } from "./calc";
-import { DEFAULT_CONFIG } from "./defaultConfig";
 import type { Config, Joueur, StockItem, Preinscription, Role, Commande, Inventaire } from "./types";
 
 type DataRow = { id: string; data: Record<string, unknown> };
@@ -57,8 +56,7 @@ async function put(table: string, id: string, data: Record<string, unknown>) {
 async function patch(table: string, id: string, partial: Record<string, unknown>) {
   const current = await boutiqueDb.from(table).select("data").eq("id", id).maybeSingle();
   fail(current.error);
-  const fallback = table === "config" ? (DEFAULT_CONFIG as unknown as Record<string, unknown>) : {};
-  await put(table, id, { ...fallback, ...((current.data?.data as Record<string, unknown>) ?? {}), ...partial });
+  await put(table, id, { ...((current.data?.data as Record<string, unknown>) ?? {}), ...partial });
 }
 
 async function remove(table: string, id: string) {
@@ -75,17 +73,10 @@ export function useConfig(): Config | null {
       if (!active) return;
       if (error) {
         console.error("Chargement de la configuration:", error.message);
-        setConfig(DEFAULT_CONFIG);
+        setConfig(null);
         return;
       }
-      const c = data?.data ? ({ ...(data.data as Config) }) : DEFAULT_CONFIG;
-      if (c.reglements && !c.reglements.includes("2 CHEQUES")) {
-        const i = c.reglements.indexOf("1 CHEQUE");
-        c.reglements = i >= 0
-          ? [...c.reglements.slice(0, i + 1), "2 CHEQUES", ...c.reglements.slice(i + 1)]
-          : [...c.reglements, "2 CHEQUES"];
-      }
-      setConfig(c);
+      setConfig(data?.data ? ({ ...(data.data as Config) }) : null);
     };
     void load();
     const channel = supabase.channel(realtimeChannelName("config"))

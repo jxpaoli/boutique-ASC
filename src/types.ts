@@ -1,6 +1,6 @@
 // Modèle de données — Boutique AS Casinca
 
-export type Licence = "" | "NOUVEAU" | "RENOUV." | "LICENCE";
+export type Licence = string;
 
 // Remise d'un article : remis ou différé (le reste — à commander / récupérer — se gère dans le Stock)
 export type ArticleStatut = "remis" | "differe";
@@ -47,6 +47,29 @@ export interface Joueur {
 
 export interface Remise { nom: string; montant: number; }
 export interface CatalogueItem { nom: string; tailles: string[]; gererStock?: boolean }
+export interface LicenceOption {
+  code: string;
+  label: string;
+  tarif: number;
+  categoriesAutorisees: string[];
+  ajouteSac: boolean;
+  defaut?: boolean;
+}
+export interface CategorieAge { categorie: string; ageMin: number; ageMax: number }
+export interface ReglesMetier {
+  ageAdulte: number;
+  categoriesAge: CategorieAge[];
+  taillesParAge: Record<string, number>;
+  ordreTaillesAdultes: string[];
+  articleSac: string;
+  tailleSac: string;
+  reglementNonRegle: string;
+  chequesParReglement: Record<string, number>;
+  jourEncaissementCheques: number;
+  delaiPremierChequeJours: number;
+  libellesRoles: Record<Role, string>;
+  libellesCommandes: Record<string, string>;
+}
 
 export interface Config {
   saison: string;
@@ -58,6 +81,8 @@ export interface Config {
   catalogue: CatalogueItem[];
   packs: Record<string, string[]>;
   packsGardien: Record<string, string[]>;
+  licences: LicenceOption[];
+  reglesMetier: ReglesMetier;
 }
 
 // Pré-inscription déposée par la personne via le QR (formulaire public)
@@ -75,11 +100,6 @@ export interface Preinscription {
 
 // Commandes fournisseur
 export type CommandeStatut = "apasser" | "encours" | "recue";
-export const COMMANDE_LABEL: Record<CommandeStatut, string> = {
-  apasser: "🛒 À passer",
-  encours: "🚚 Commandée",
-  recue: "✅ Reçue",
-};
 export interface CommandeLigne { article: string; taille: string; quantite: number }
 export interface Commande {
   id: string;

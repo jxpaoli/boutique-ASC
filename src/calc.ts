@@ -3,9 +3,8 @@ import type { Joueur, Config, Cheque, StockItem, Commande } from "./types";
 export const stockId = (article: string, taille: string) => (article + "__" + taille).replace(/\//g, "-");
 
 /* ---------- Chèques ---------- */
-export function chequeCount(m: string): number {
-  const x = /^(\d+)\s*CH[EÈ]QUE/i.exec(m || "");
-  return x ? +x[1] : 0;
+export function chequeCount(m: string, cfg: Config): number {
+  return Math.max(0, Math.round(cfg.reglesMetier.chequesParReglement[m] || 0));
 }
 export function splitAmount(total: number, n: number): number[] {
   const base = Math.floor(total / n);
@@ -27,21 +26,21 @@ function remiseTotale(p: Joueur, cfg: Config): number {
   });
   return r;
 }
-function paidAmount(p: Joueur, total: number): number {
+function paidAmount(p: Joueur, total: number, cfg: Config): number {
   const m = p.reglement || "";
-  const n = chequeCount(m);
+  const n = chequeCount(m, cfg);
   if (n > 0) {
     let s = 0;
     const cq = p.cheques || [];
     for (let i = 0; i < n; i++) if (cq[i] && cq[i].enc) s += chequeAmt(cq[i], total, n);
     return s;
   }
-  if (m && m !== "NON RÉGLÉ") return p.regOk ? total : 0;
+  if (m && m !== cfg.reglesMetier.reglementNonRegle) return p.regOk ? total : 0;
   return 0;
 }
-function recoveredAmount(p: Joueur, total: number): number {
+function recoveredAmount(p: Joueur, total: number, cfg: Config): number {
   const m = p.reglement || "";
-  const n = chequeCount(m);
+  const n = chequeCount(m, cfg);
   if (n > 0) {
     let s = 0;
     const cq = p.cheques || [];
@@ -49,7 +48,7 @@ function recoveredAmount(p: Joueur, total: number): number {
     for (let i = 0; i < n; i++) if (cq[i] && (cq[i].recup || cq[i].enc)) s += chequeAmt(cq[i], total, n);
     return s;
   }
-  if (m && m !== "NON RÉGLÉ") return p.regOk ? total : 0;
+  if (m && m !== cfg.reglesMetier.reglementNonRegle) return p.regOk ? total : 0;
   return 0;
 }
 
@@ -58,11 +57,11 @@ export interface CalcResult {
   reste: number; aRecuperer: number; aEncaisser: number;
 }
 export function calc(p: Joueur, cfg: Config): CalcResult {
-  const base = cfg.tarifs[p.licence] || 0;
+  const base = cfg.licences.find((l) => l.code === p.licence)?.tarif ?? cfg.tarifs[p.licence] ?? 0;
   const remise = remiseTotale(p, cfg);
   const total = Math.max(0, base - remise);
-  const paye = paidAmount(p, total);
-  const recupere = recoveredAmount(p, total);
+  const paye = paidAmount(p, total, cfg);
+  const recupere = recoveredAmount(p, total, cfg);
   return { base, remise, total, paye, recupere, reste: total - paye, aRecuperer: total - recupere, aEncaisser: recupere - paye };
 }
 
@@ -76,23 +75,8 @@ export function ageDe(annee: number, cfg: Config): number {
   return saisonStart(cfg) - annee;
 }
 export function autoCategorie(annee: number, cfg: Config): string {
-  const start = saisonStart(cfg);
-  const N = start - annee + 1;
-  const age = start - annee;
-  const cand = cfg.categories
-    .map((c) => {
-      const nums = [...c.matchAll(/U\s*(\d+)/gi)].map((m) => +m[1]);
-      return { name: c, min: nums.length ? Math.min(...nums) : null, max: nums.length ? Math.max(...nums) : null };
-    })
-    .filter((x): x is { name: string; min: number; max: number } => x.max != null);
-  if (!cand.length) return "";
-  const pick = (re: RegExp) => cfg.categories.find((c) => re.test(c)) || "";
-  const gMin = Math.min(...cand.map((x) => x.min));
-  const gMax = Math.max(...cand.map((x) => x.max));
-  if (N < gMin) return pick(/BAB/i) || [...cand].sort((a, b) => a.max - b.max)[0].name;
-  if (N > gMax) return (age >= 35 ? pick(/VETERAN/i) : pick(/SENIOR/i)) || pick(/SENIOR/i);
-  const up = cand.filter((x) => x.max >= N).sort((a, b) => a.max - b.max)[0];
-  return up ? up.name : "";
+  const age = ageDe(annee, cfg);
+  return cfg.reglesMetier.categoriesAge.find((r) => age >= r.ageMin && age <= r.ageMax)?.categorie || "";
 }
 
 export function packPour(cfg: Config, categorie: string, gardien: boolean): string[] {
@@ -101,10 +85,6 @@ export function packPour(cfg: Config, categorie: string, gardien: boolean): stri
 }
 
 /* ---------- Tailles par âge ---------- */
-const SZAGE: Record<string, number> = {
-  "Taille unique": 0, "4 ans": 4, "4-6 ans": 5, "6 ans": 6, "8 ans": 8, "8-10 ans": 9,
-  "10 ans": 10, "12 ans": 12, "12-14 ans": 13, XS: 13, "S-M": 14, S: 15, M: 18, L: 30, "L-XL": 30, XL: 40, XXL: 55,
-};
 export function defaultSize(cfg: Config, article: string, age: number | null): string {
   const c = cfg.catalogue.find((x) => x.nom === article);
   if (!c || !c.tailles.length) return "";
@@ -112,7 +92,7 @@ export function defaultSize(cfg: Config, article: string, age: number | null): s
   if (age == null) return "";
   let best = "", bd = Infinity;
   c.tailles.forEach((t) => {
-    const v = SZAGE[t];
+    const v = cfg.reglesMetier.taillesParAge[t];
     if (v == null) return;
     const d = Math.abs(v - age);
     if (d < bd) { bd = d; best = t; }
@@ -121,15 +101,14 @@ export function defaultSize(cfg: Config, article: string, age: number | null): s
 }
 
 /* ---------- Adulte : tailles lettres, défaut L ---------- */
-const ADULT_PREF = ["L", "L-XL", "M", "S-M", "XL", "XXL", "S"];
-export function estAdulte(age: number | null): boolean {
-  return age == null || age >= 18;
+export function estAdulte(cfg: Config, age: number | null): boolean {
+  return age == null || age >= cfg.reglesMetier.ageAdulte;
 }
 // Tailles utilisables pour un joueur : pour un adulte, on enlève les tailles "… ans" (jamais en dessous des tailles adultes).
 export function taillesEligibles(cfg: Config, article: string, age: number | null): string[] {
   const c = cfg.catalogue.find((x) => x.nom === article);
   if (!c) return [];
-  if (estAdulte(age)) {
+  if (estAdulte(cfg, age)) {
     const lettres = c.tailles.filter((t) => !/ans/i.test(t));
     return lettres.length ? lettres : c.tailles;
   }
@@ -140,9 +119,9 @@ export function tailleAuto(cfg: Config, article: string, age: number | null): st
   const c = cfg.catalogue.find((x) => x.nom === article);
   if (!c || !c.tailles.length) return "";
   if (c.tailles.length === 1) return c.tailles[0];
-  if (estAdulte(age)) {
+  if (estAdulte(cfg, age)) {
     const elig = taillesEligibles(cfg, article, age);
-    for (const p of ADULT_PREF) if (elig.includes(p)) return p;
+    for (const p of cfg.reglesMetier.ordreTaillesAdultes) if (elig.includes(p)) return p;
     return elig[elig.length - 1] || "";
   }
   return defaultSize(cfg, article, age);
@@ -186,13 +165,15 @@ function isoDate(d: Date): string {
   const z = (x: number) => String(x).padStart(2, "0");
   return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
 }
-export function defaultChequeDates(n: number): string[] {
+export function defaultChequeDates(n: number, cfg: Config): string[] {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const out = [isoDate(today)];
   if (n > 1) {
-    let first = new Date(today.getFullYear(), today.getMonth() + 1, 8);
-    if ((+first - +today) / 86400000 < 30) first = new Date(today.getFullYear(), today.getMonth() + 2, 8);
-    for (let i = 1; i < n; i++) out.push(isoDate(new Date(first.getFullYear(), first.getMonth() + (i - 1), 8)));
+    const jour = Math.max(1, Math.min(28, Math.round(cfg.reglesMetier.jourEncaissementCheques)));
+    const delai = Math.max(0, Math.round(cfg.reglesMetier.delaiPremierChequeJours));
+    let first = new Date(today.getFullYear(), today.getMonth() + 1, jour);
+    if ((+first - +today) / 86400000 < delai) first = new Date(today.getFullYear(), today.getMonth() + 2, jour);
+    for (let i = 1; i < n; i++) out.push(isoDate(new Date(first.getFullYear(), first.getMonth() + (i - 1), jour)));
   }
   return out;
 }

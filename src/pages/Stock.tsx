@@ -4,7 +4,7 @@ import { useAuth } from "../auth";
 import { besoinsCommande } from "../calc";
 import { exportInventaireXlsx, lireInventaireXlsx } from "../xlsxStock";
 import Icon from "../Icon";
-import { COMMANDE_LABEL, type CatalogueItem, type Commande, type CommandeLigne, type StockItem } from "../types";
+import { type CatalogueItem, type Commande, type CommandeLigne, type StockItem } from "../types";
 
 const todayIso = () => { const z = (x: number) => String(x).padStart(2, "0"); const d = new Date(); return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()); };
 const key2 = (a: string, t: string) => a + "__" + t;
@@ -169,7 +169,7 @@ export default function Stock() {
           {[...commandes].sort((a, b) => (b.dateCreation || 0) - (a.dateCreation || 0)).map((c) => (
             <div className="card" key={c.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span className={"badge " + (c.statut === "recue" ? "ok" : c.statut === "encours" ? "part" : "no")}>{COMMANDE_LABEL[c.statut]}</span>
+                <span className={"badge " + (c.statut === "recue" ? "ok" : c.statut === "encours" ? "part" : "no")}>{cfg.reglesMetier.libellesCommandes[c.statut] || c.statut}</span>
                 {c.fournisseur && <span className="muted" style={{ fontSize: 12 }}>{c.fournisseur}</span>}
               </div>
               <div style={{ fontSize: 13, margin: "6px 0" }}>{c.lignes.map((l) => l.quantite + "× " + l.article + " (" + l.taille + ")").join(" · ")}</div>

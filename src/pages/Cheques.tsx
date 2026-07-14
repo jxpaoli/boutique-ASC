@@ -11,7 +11,7 @@ const todayIso = () => {
 
 function withMontants(j: Joueur, cfg: Config): Cheque[] {
   const total = calc(j, cfg).total;
-  const n = chequeCount(j.reglement);
+  const n = chequeCount(j.reglement, cfg);
   return j.cheques.map((ch) => ({ ...ch, montant: chequeAmt(ch, total, n) }));
 }
 
@@ -46,7 +46,7 @@ export default function Cheques() {
     const out: Item[] = [];
     if (!cfg || !joueurs) return { items: out, resume: { nb: 0, montant: 0, retard: 0 } };
     joueurs.forEach((j) => {
-      const n = chequeCount(j.reglement);
+      const n = chequeCount(j.reglement, cfg);
       if (!n) return;
       const total = calc(j, cfg).total;
       const somme = j.cheques.reduce((s, ch) => s + chequeAmt(ch, total, n), 0);

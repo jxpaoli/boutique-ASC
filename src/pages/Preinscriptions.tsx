@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { usePreinscriptions, deletePreinscription, addJoueur, useJoueurs } from "../data";
+import { usePreinscriptions, deletePreinscription, addJoueur, useJoueurs, useConfig } from "../data";
 import Icon from "../Icon";
 import type { Joueur, PackArticle, Preinscription } from "../types";
 
 export default function Preinscriptions() {
   const list = usePreinscriptions();
   const joueurs = useJoueurs();
+  const cfg = useConfig();
   const nav = useNavigate();
-  if (!list) return <div className="muted" style={{ padding: 20 }}>Chargement…</div>;
+  if (!list || !cfg) return <div className="muted" style={{ padding: 20 }}>Chargement…</div>;
 
   const valider = async (p: Preinscription) => {
     const dbl = (joueurs || []).find((j) =>
@@ -17,7 +18,7 @@ export default function Preinscriptions() {
     // articles en « différé » : la remise réelle (et le décrément du stock) se fait sur la fiche
     const articles: PackArticle[] = (p.articles || []).map((a) => ({ article: a.article, taille: a.taille, statut: "differe" }));
     const joueur: Omit<Joueur, "id"> = {
-      categorie: p.categorie, gardien: p.gardien, licence: "RENOUV.",
+      categorie: p.categorie, gardien: p.gardien, licence: cfg.licences.find((l) => l.defaut)?.code || cfg.licences[0]?.code || "",
       nom: p.nom, prenom: p.prenom, annee: p.annee, tel: p.tel,
       articles, remises: [], reglement: "", cheques: [], regOk: false, regDate: "", commentaires: "",
     };

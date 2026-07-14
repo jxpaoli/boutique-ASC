@@ -12,8 +12,9 @@ import { type ArticleStatut, type Cheque, type Joueur, type Licence, type PackAr
 const todayIso = () => { const z = (x: number) => String(x).padStart(2, "0"); const d = new Date(); return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()); };
 
 function blankJoueur(cfg: Config): Joueur {
+  const licenceDefaut = cfg.licences.find((l) => l.defaut)?.code || cfg.licences[0]?.code || "";
   return {
-    id: "", categorie: cfg.categories[0] || "", gardien: false, licence: "RENOUV.",
+    id: "", categorie: cfg.categories[0] || "", gardien: false, licence: licenceDefaut,
     nom: "", prenom: "", annee: "", tel: "",
     articles: [], remises: [], reglement: "", cheques: [], regOk: false, regDate: "", commentaires: "",
   };
@@ -21,7 +22,7 @@ function blankJoueur(cfg: Config): Joueur {
 
 function buildPack(cfg: Config, cat: string, gardien: boolean, licence: Licence, age: number | null, horsStock?: (a: string, t: string) => boolean): PackArticle[] {
   const names = packPour(cfg, cat, gardien).slice();
-  if (cfg.sacSiNouvelle && licence === "NOUVEAU") names.unshift("SAC");
+  if (cfg.sacSiNouvelle && cfg.licences.find((l) => l.code === licence)?.ajouteSac) names.unshift(cfg.reglesMetier.articleSac);
   return names.map((nom) => {
     const taille = tailleAuto(cfg, nom, age) || "";
     const statut: ArticleStatut = horsStock && horsStock(nom, taille) ? "differe" : "remis";
@@ -66,7 +67,10 @@ export default function FicheJoueur({ role }: { role: Role }) {
 
   const set = (patch: Partial<Joueur>) => setDraft({ ...draft, ...patch });
   const c = calc(draft, cfg);
-  const licSeuleOk = /VETERAN|EDUCATEUR/i.test(draft.categorie);
+  const licenceAutorisee = (code: string, categorie: string) => {
+    const option = cfg.licences.find((l) => l.code === code);
+    return !option || option.categoriesAutorisees.length === 0 || option.categoriesAutorisees.includes(categorie);
+  };
   const horsStock = (a: string, t: string) => {
     const s = (stock || []).find((x) => x.id === stockId(a, t));
     return !!s && s.quantite <= 0;
@@ -97,17 +101,18 @@ export default function FicheJoueur({ role }: { role: Role }) {
   const onCategorie = (cat: string) => {
     const arts = draft.articles.length === 0 || confirm("Recharger le pack de « " + cat + " » ? Les articles seront remplacés.")
       ? buildPackG(cat, draft.gardien) : draft.articles;
-    const licence = draft.licence === "LICENCE" && !/VETERAN|EDUCATEUR/i.test(cat) ? "" : draft.licence;
+    const licence = licenceAutorisee(draft.licence, cat) ? draft.licence : "";
     setDraft({ ...draft, categorie: cat, licence, articles: arts });
   };
 
   /* ---- licence / sac ---- */
   const onLicence = (lic: Licence) => {
     let arts = draft.articles.slice();
-    const wantSac = cfg.sacSiNouvelle && lic === "NOUVEAU";
-    const hasSac = arts.some((a) => a.article === "SAC");
-    if (wantSac && !hasSac) arts = [{ article: "SAC", taille: "Taille unique", statut: "remis" }, ...arts];
-    if (!wantSac && hasSac) arts = arts.filter((a) => a.article !== "SAC");
+    const articleSac = cfg.reglesMetier.articleSac;
+    const wantSac = cfg.sacSiNouvelle && cfg.licences.find((l) => l.code === lic)?.ajouteSac;
+    const hasSac = arts.some((a) => a.article === articleSac);
+    if (wantSac && !hasSac) arts = [{ article: articleSac, taille: cfg.reglesMetier.tailleSac, statut: "remis" }, ...arts];
+    if (!wantSac && hasSac) arts = arts.filter((a) => a.article !== articleSac);
     setDraft({ ...draft, licence: lic, articles: arts });
   };
 
@@ -136,26 +141,26 @@ export default function FicheJoueur({ role }: { role: Role }) {
 
   /* ---- règlement ---- */
   const onReglement = (m: string) => {
-    const n = chequeCount(m);
+    const n = chequeCount(m, cfg);
     if (n > 0) {
-      const dates = defaultChequeDates(n);
+      const dates = defaultChequeDates(n, cfg);
       const montants = splitAmount(c.total, n);
       const cheques: Cheque[] = Array.from({ length: n }, (_, i) => ({ datePrev: dates[i], montant: montants[i], recup: false, enc: false }));
       setDraft({ ...draft, reglement: m, cheques, regOk: false });
     } else {
-      const regDate = m && m !== "NON RÉGLÉ" ? (draft.regDate || todayIso()) : draft.regDate;
+      const regDate = m && m !== cfg.reglesMetier.reglementNonRegle ? (draft.regDate || todayIso()) : draft.regDate;
       setDraft({ ...draft, reglement: m, cheques: [], regOk: false, regDate });
     }
   };
   const setCheque = (i: number, patch: Partial<Cheque>) =>
     set({ cheques: draft.cheques.map((ch, k) => (k === i ? { ...ch, ...patch } : ch)) });
   const equilibrer = (i: number) => {
-    const n = chequeCount(draft.reglement);
+    const n = chequeCount(draft.reglement, cfg);
     let autres = 0;
     draft.cheques.forEach((ch, k) => { if (k !== i) autres += chequeAmt(ch, c.total, n); });
     setCheque(i, { montant: Math.max(0, c.total - autres) });
   };
-  const sommeCheques = draft.cheques.reduce((s, ch) => s + chequeAmt(ch, c.total, chequeCount(draft.reglement)), 0);
+  const sommeCheques = draft.cheques.reduce((s, ch) => s + chequeAmt(ch, c.total, chequeCount(draft.reglement, cfg)), 0);
 
   /* ---- enregistrer ---- */
   const gereStock = (art: string) => !!cfg.catalogue.find((cc) => cc.nom === art)?.gererStock;
@@ -188,7 +193,7 @@ export default function FicheJoueur({ role }: { role: Role }) {
   };
   const annuler = async () => { await annulerSuppression(draft.id); nav("/"); };
 
-  const n = chequeCount(draft.reglement);
+  const n = chequeCount(draft.reglement, cfg);
   const dfCount = draft.articles.filter((a) => a.statut !== "remis").length;
   const totalArts = draft.articles.length;
 
@@ -207,9 +212,10 @@ export default function FicheJoueur({ role }: { role: Role }) {
 
       <label>Type de licence</label>
       <div className="chips lic-btns">
-        <button className={"chip" + (draft.licence === "NOUVEAU" ? " on" : "")} onClick={() => onLicence("NOUVEAU")}>NOUVEAU</button>
-        <button className={"chip" + (draft.licence === "RENOUV." ? " on" : "")} onClick={() => onLicence("RENOUV.")}>RENOUV.</button>
-        <button className={"chip" + (draft.licence === "LICENCE" ? " on" : "")} disabled={!licSeuleOk} title={licSeuleOk ? "" : "Réservé aux vétérans / éducateurs"} onClick={() => onLicence("LICENCE")}>LICENCE seule</button>
+        {cfg.licences.map((lic) => {
+          const autorisee = licenceAutorisee(lic.code, draft.categorie);
+          return <button key={lic.code} className={"chip" + (draft.licence === lic.code ? " on" : "")} disabled={!autorisee} title={autorisee ? "" : "Non autorisé pour cette catégorie"} onClick={() => onLicence(lic.code)}>{lic.label}</button>;
+        })}
       </div>
 
       <div className="grid2">
@@ -303,7 +309,7 @@ export default function FicheJoueur({ role }: { role: Role }) {
           </div>
         </div>
       )}
-      {n === 0 && draft.reglement && draft.reglement !== "NON RÉGLÉ" && (
+      {n === 0 && draft.reglement && draft.reglement !== cfg.reglesMetier.reglementNonRegle && (
         <div className="paybox">
           <label className="check"><input type="checkbox" checked={draft.regOk} onChange={(e) => set({ regOk: e.target.checked })} /> Paiement effectué / encaissé</label>
           <span className="dt">le <input type="date" value={draft.regDate} onChange={(e) => set({ regDate: e.target.value })} /></span>

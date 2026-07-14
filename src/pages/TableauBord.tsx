@@ -30,7 +30,7 @@ export default function TableauBord() {
         const c = calc(p, cfg);
         fin.total += c.total; fin.encaisse += c.paye; fin.reste += c.reste; fin.recup += c.aRecuperer; fin.enc += c.aEncaisser;
         // tous les modes "N CHEQUES" comptent comme un seul moyen : CHÈQUES
-        const m = chequeCount(p.reglement) > 0 ? "CHÈQUES" : (p.reglement || "—");
+        const m = chequeCount(p.reglement, cfg) > 0 ? "CHÈQUES" : (p.reglement || "—");
         const e = parMoyen.get(m) || { n: 0, total: 0, encaisse: 0, reste: 0 };
         e.n++; e.total += c.total; e.encaisse += c.paye; e.reste += c.reste; parMoyen.set(m, e);
         const arts = p.articles || [];

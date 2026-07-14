@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, Outlet, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
-import { useRole } from "./data";
+import { useConfig, useRole } from "./data";
 import type { Role } from "./types";
 import Icon from "./Icon";
 import Login from "./pages/Login";
@@ -14,13 +14,14 @@ import Preinscriptions from "./pages/Preinscriptions";
 
 function Layout({ role }: { role: Role }) {
   const { user, logout } = useAuth();
+  const cfg = useConfig();
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="logo"><img src="/icon.svg" alt="AS Casinca" /></div>
         <div style={{ flex: 1 }}>
           <h1>Boutique AS Casinca</h1>
-          <div className="sub">{role === "admin" ? "Admin" : role === "supervision" ? "Supervision" : "Boutique"}</div>
+          <div className="sub">{cfg?.reglesMetier.libellesRoles[role] || role}</div>
         </div>
         <button className="header-logout" onClick={logout} title={user?.email ?? ""}>Quitter</button>
       </header>

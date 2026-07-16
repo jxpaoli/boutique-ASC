@@ -162,6 +162,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: inset 0 0 0 3px rgba(234, 179, 8, .85), 0 12px 26px -10px rgba(20, 83, 45, .7);
 }
 .login-err { margin-top: 12px; background: #fdecec; color: var(--rouge); border-radius: 12px; padding: 10px; font-size: 13px; font-weight: 600; }
+.user-feedback { display: block; width: 100%; margin-top: 10px; }
 
 /* Totaux (KPI) */
 .totaux { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }

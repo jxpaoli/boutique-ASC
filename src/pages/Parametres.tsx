@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useConfig, patchConfig, setStockItem, useRoles, setUserRole, removeUserRole, creerCompte, resetUserPassword, exportBase, importBase, nouvelleSaison } from "../data";
 import { calc } from "../calc";
 import Icon from "../Icon";
@@ -17,6 +17,8 @@ export default function Parametres() {
   const [newMail, setNewMail] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [newRole, setNewRole] = useState<Role>("user");
+  const [userBusy, setUserBusy] = useState(false);
+  const [userMessage, setUserMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [saisonSuivante, setSaisonSuivante] = useState("");
   const [seuilTout, setSeuilTout] = useState(5);
   const [busy, setBusy] = useState("");
@@ -53,22 +55,37 @@ export default function Parametres() {
     setBusy("Nouvelle saison…"); await nouvelleSaison(s); setBusy(""); alert("Nouvelle saison « " + s + " » — base repartie propre ✔\n(La sauvegarde de l'ancienne saison est dans tes téléchargements.)");
   };
 
-  const creer = async () => {
+  const creer = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    if (userBusy) return;
     const mail = newMail.trim();
-    if (!mail || newPwd.length < 8) { alert("Il faut un e-mail et un mot de passe d'au moins 8 caractères."); return; }
+    setUserMessage(null);
+    if (!mail || newPwd.length < 8) {
+      setUserMessage({ type: "error", text: "Il faut un e-mail et un mot de passe d'au moins 8 caractères." });
+      return;
+    }
+    setUserBusy(true);
     try {
       const result = await creerCompte(mail, newPwd, newRole);
       setNewMail(""); setNewPwd("");
-      alert(result.existing
-        ? "Ce compte existait déjà dans Supabase : l’accès à Boutique ASC a été ajouté sans modifier son mot de passe."
-        : "Compte créé ✔ La personne peut se connecter avec cet e-mail et ce mot de passe.");
+      setUserMessage({
+        type: "ok",
+        text: result.existing
+          ? "Ce compte existait déjà dans Supabase : l’accès à Boutique ASC a été ajouté sans modifier son mot de passe."
+          : "Compte créé ✔ La personne peut maintenant se connecter.",
+      });
     } catch (e: unknown) {
       const code = e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "";
       const message = e instanceof Error ? e.message : "Création impossible.";
-      alert(code.includes("email-already-in-use") ? "Cet e-mail a déjà un compte." :
-        code.includes("invalid-email") ? "E-mail invalide." :
-        code.includes("weak-password") ? "Mot de passe trop court (6 caractères min)." :
-        message);
+      setUserMessage({
+        type: "error",
+        text: code.includes("email-already-in-use") ? "Cet e-mail a déjà un compte." :
+          code.includes("invalid-email") ? "E-mail invalide." :
+          code.includes("weak-password") ? "Mot de passe trop court." :
+          message,
+      });
+    } finally {
+      setUserBusy(false);
     }
   };
 
@@ -408,18 +425,19 @@ export default function Parametres() {
               <button className="x" onClick={() => { if (confirm("Retirer les droits de " + r.email + " ?")) void removeUserRole(r.email); }}>✕</button>
             </div>
           ))}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--bord)" }}>
+          <form className="user-create-form" onSubmit={(e) => void creer(e)} style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--bord)" }}>
             <label>Créer un compte</label>
-            <div className="editrow"><input placeholder="email@exemple.fr" value={newMail} onChange={(e) => setNewMail(e.target.value)} /></div>
+            <div className="editrow"><input type="email" autoComplete="username" inputMode="email" placeholder="email@exemple.fr" value={newMail} onChange={(e) => { setNewMail(e.target.value); setUserMessage(null); }} required /></div>
             <div className="editrow">
-              <input type="password" placeholder="mot de passe (≥ 8)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+              <input type="password" autoComplete="new-password" minLength={8} enterKeyHint="done" placeholder="mot de passe (≥ 8)" value={newPwd} onChange={(e) => { setNewPwd(e.target.value); setUserMessage(null); }} required />
               <select value={newRole} style={{ flex: "none", width: 150 }} onChange={(e) => setNewRole(e.target.value as Role)}>
                 {(["user", "supervision", "admin"] as Role[]).map((x) => <option key={x} value={x}>{roleLabel(x)}</option>)}
               </select>
             </div>
-            <button className="btn-primary" onClick={() => void creer()}>+ Créer le compte</button>
-            <button className="mini" style={{ marginTop: 8 }} onClick={() => { if (newMail.trim()) { void setUserRole(newMail, newRole); setNewMail(""); } }}>Définir le rôle seulement (compte déjà existant)</button>
-          </div>
+            <button type="submit" className="btn-primary" disabled={userBusy}>{userBusy ? "Création…" : "+ Créer le compte"}</button>
+            {userMessage && <div className={userMessage.type === "ok" ? "hint vert user-feedback" : "login-err user-feedback"} role="status">{userMessage.text}</div>}
+            <button type="button" className="mini" style={{ marginTop: 8 }} onClick={() => { if (newMail.trim()) { void setUserRole(newMail, newRole); setNewMail(""); } }}>Définir le rôle seulement (compte déjà existant)</button>
+          </form>
         </div>
       </details>
 

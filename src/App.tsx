@@ -26,7 +26,7 @@ function Layout({ role }: { role: Role }) {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="logo"><img src="/icon.svg" alt="" /></div>
+        <div className="logo"><img src="/logo-192.png" alt="" /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1>Projets européens</h1>
           <div className="sub">EPCI de Corse – Ports HC{role === "lecteur" ? " · lecture" : ""}</div>

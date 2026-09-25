@@ -1,8 +1,8 @@
 /* Projets européens – EPCI de Corse – Ports HC
    Mobile d'abord ; thème clair par défaut, sombre si le téléphone l'est. */
 :root {
-  --marine: #1f3a68;
-  --marine-fonce: #152a4d;
+  --marine: #0e3052;
+  --marine-fonce: #0a2340;
   --jaune: #f5c518;
   --bg: #f3f5f9;
   --card: #ffffff;

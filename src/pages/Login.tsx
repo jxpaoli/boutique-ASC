@@ -34,7 +34,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <div className="login-logo"><img src="/icon.svg" alt="Projets européens" /></div>
+        <div className="login-logo"><img src="/logo-192.png" alt="Projets européens" /></div>
         <h1>Projets européens</h1>
         <p className="muted">EPCI de Corse – Ports HC</p>
 

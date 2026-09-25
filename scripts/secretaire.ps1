@@ -10,7 +10,7 @@
 # Aucune valeur n'est jamais affichée.
 #
 # Usage (dot-source puis appeler les fonctions) :
-#   . C:\Users\jxpao\Claude\Projects\boutique-as-casinca\scripts\secretaire.ps1
+#   . C:\Users\jxpao\Claude\Projects\gestion-projets-europeens\scripts\secretaire.ps1
 #   $p = Debut-Passage -Du 2026-09-20 -Au 2026-09-25
 #   Get-Projets
 #   Nouvelle-Action -Projet JASON -Libelle "Relancer le LaMMA" -MailRef "VERSE-<unid>" -Source "Mail de X du 24/09 : …" -DateSource "2026-09-24T10:12:00+02:00" -Echeance 2026-10-05

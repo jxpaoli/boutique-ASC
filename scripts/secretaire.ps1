@@ -57,7 +57,8 @@ function Api([string]$Methode, [string]$Chemin, $Corps = $null) {
     throw "Refusé par l'appli : $msg"
   }
   $texte = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())
-  if ($texte) { $texte | ConvertFrom-Json }
+  # PowerShell 5.1 renvoie un tableau JSON comme un seul objet : on l'énumère pour avoir une vraie liste.
+  if ($texte) { foreach ($x in ($texte | ConvertFrom-Json)) { $x } }
 }
 
 function Id-Projet([string]$Acronyme) {

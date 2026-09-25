@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { db } from "./supabase";
-import type { Action, DocumentProjet, Echeance, EtapePeriode, Evenement, Livrable, Passage, Periode, Projet, Role, StatutAction } from "./types";
+import type { Action, DocumentProjet, ReunionInfo, ReunionPoint, Echeance, EtapePeriode, Evenement, Livrable, Passage, Periode, Projet, Role, StatutAction } from "./types";
 
 export interface Donnees {
   projets: Projet[];
@@ -13,6 +13,8 @@ export interface Donnees {
   dernierPassage: Passage | null;
   documents: DocumentProjet[];
   parametres: Record<string, string>;
+  infos: ReunionInfo[];
+  points: ReunionPoint[];
 }
 
 interface DonneesCtx {
@@ -25,6 +27,7 @@ interface DonneesCtx {
   enregistrerAction: (a: Partial<Action> & Pick<Action, "projet_id" | "libelle">) => Promise<string>;
   supprimerAction: (id: string) => Promise<string>;
   commenter: (actionId: string, message: string) => Promise<string>;
+  majPoint: (id: string, champs: Partial<ReunionPoint>) => Promise<string>;
   // Action ouverte dans la fiche d'édition : une action existante, "nouvelle", ou null (fermée).
   editer: Action | "nouvelle" | null;
   setEditer: (a: Action | "nouvelle" | null) => void;
@@ -46,7 +49,7 @@ export function DonneesProvider({ estAdmin, children }: { estAdmin: boolean; chi
 
   const recharger = useCallback(async () => {
     try {
-      const [projets, actions, echeances, livrables, periodes, etapes, evenements, passages, documents, parametres] = await Promise.all([
+      const [projets, actions, echeances, livrables, periodes, etapes, evenements, passages, documents, parametres, infos, points] = await Promise.all([
         lire<Projet>("projets", "acronyme"),
         lire<Action>("actions", "echeance"),
         lire<Echeance>("echeances", "date"),
@@ -58,9 +61,11 @@ export function DonneesProvider({ estAdmin, children }: { estAdmin: boolean; chi
           .then(({ data, error }) => { if (error) throw error; return (data ?? []) as Passage[]; }),
         lire<DocumentProjet>("documents", "nom"),
         lire<{ cle: string; valeur: string }>("parametres", "cle"),
+        lire<ReunionInfo>("reunion_infos", "ordre"),
+        lire<ReunionPoint>("reunion_points", "ordre"),
       ]);
       setDonnees({ projets, actions, echeances, livrables, periodes, etapes, evenements, dernierPassage: passages[0] ?? null,
-        documents, parametres: Object.fromEntries(parametres.map((p) => [p.cle, p.valeur])) });
+        documents, parametres: Object.fromEntries(parametres.map((p) => [p.cle, p.valeur])), infos, points });
       setErreur("");
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Chargement impossible");
@@ -103,6 +108,12 @@ export function DonneesProvider({ estAdmin, children }: { estAdmin: boolean; chi
     return "";
   };
 
+  const majPoint = async (id: string, champs: Partial<ReunionPoint>) => {
+    setDonnees((d) => d && ({ ...d, points: d.points.map((p) => (p.id === id ? { ...p, ...champs } : p)) }));
+    const { error } = await db.from("reunion_points").update(champs).eq("id", id);
+    return error ? error.message : "";
+  };
+
   const commenter = async (actionId: string, message: string) => {
     const { error } = await db.from("actions_evenements").insert({ action_id: actionId, type: "commentaire", message });
     if (error) return error.message;
@@ -118,7 +129,7 @@ export function DonneesProvider({ estAdmin, children }: { estAdmin: boolean; chi
   };
 
   return (
-    <Ctx.Provider value={{ donnees, erreur, estAdmin, recharger, projet, cocherAction, enregistrerAction, supprimerAction, commenter, editer, setEditer }}>
+    <Ctx.Provider value={{ donnees, erreur, estAdmin, recharger, projet, cocherAction, enregistrerAction, supprimerAction, commenter, majPoint, editer, setEditer }}>
       {children}
     </Ctx.Provider>
   );

@@ -39,6 +39,7 @@ export interface Action {
   valide_le: string | null;
   valide_source: string | null;
   mail_ref: string | null;
+  echeance_id: string | null;
   updated_at: string;
 }
 
@@ -93,6 +94,37 @@ export interface Echeance {
   lieu: string | null;
   statut: StatutEcheance;
   lien: string | null;
+  notes: string | null;
+  heure_debut: string | null;
+  heure_fin: string | null;
+  lieu_nom: string | null;
+  adresse: string | null;
+  format: "presentiel" | "hybride" | "distanciel" | "ecrit" | null;
+  lien_visio: string | null;
+}
+
+export type CategorieInfo = "transport" | "hebergement" | "repas" | "contact" | "acces" | "autre";
+
+export interface ReunionInfo {
+  id: string;
+  echeance_id: string;
+  categorie: CategorieInfo;
+  titre: string;
+  detail: string | null;
+  adresse: string | null;
+  telephone: string | null;
+  lien: string | null;
+  quand: string | null;
+  ordre: number;
+}
+
+export interface ReunionPoint {
+  id: string;
+  echeance_id: string;
+  ordre: number;
+  titre: string;
+  intervenant: string | null;
+  statut: "a_venir" | "en_cours" | "traite";
   notes: string | null;
 }
 

@@ -253,6 +253,38 @@ a.doc-item:hover .libelle { color: var(--accent); }
 .doc-item.absent { opacity: .6; }
 .doc-ico { font-size: 24px; flex: none; width: 32px; text-align: center; }
 
+/* Réunions */
+a.lien-carte { color: var(--txt); text-decoration: none; }
+a.lien-carte:hover .libelle { color: var(--accent); }
+.reunion-tete { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.reunion-titre { display: flex; gap: 12px; align-items: flex-start; }
+.reunion-titre .date { flex: none; width: 56px; text-align: center; border-radius: 10px; background: var(--gris-fond); padding: 4px 0; }
+.reunion-titre .date b { display: block; font-size: 20px; }
+.reunion-titre .date span { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.card.lieu { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; }
+.card.lieu a { font-size: 14px; }
+.item.info .quand { font-weight: 700; color: var(--accent); font-size: 13px; margin-top: 2px; }
+.item.info .meta a { font-weight: 700; }
+ol.odj { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.ajout-rapide { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.ajout-rapide input:first-child { flex: 1 1 220px; }
+.ajout-rapide input[type="date"] { flex: 0 0 160px; }
+
+/* Mode séance (PC) */
+.seance-colonnes { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .seance-colonnes { grid-template-columns: 1fr; } }
+.point { background: var(--card); border: 1px solid var(--bord); border-radius: 12px; padding: 10px 12px; }
+.point.en_cours { border: 2px solid var(--accent); box-shadow: var(--ombre); }
+.point.traite .point-tete b { color: var(--muted); }
+.point-tete { cursor: pointer; display: flex; gap: 8px; align-items: baseline; }
+.point-num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--gris-fond); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.point.en_cours .point-num { background: var(--accent); color: #fff; }
+.point.traite .point-num { background: var(--vert); color: #fff; }
+.notes { margin-top: 8px; position: relative; }
+.notes textarea { font-size: 15px; }
+.notes-etat { position: absolute; right: 8px; bottom: -18px; font-size: 11.5px; }
+.notes-lecture { margin-top: 6px; font-size: 13.5px; white-space: pre-line; color: var(--muted); }
+
 /* Connexion */
 .login-wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(160deg, var(--marine), var(--marine-fonce)); }
 .login-card { width: 100%; max-width: 380px; background: var(--card); border-radius: 20px; padding: 26px 22px; text-align: center; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .6); }

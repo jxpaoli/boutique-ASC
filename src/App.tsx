@@ -13,13 +13,16 @@ import Finances from "./pages/Finances";
 import Livrables from "./pages/Livrables";
 import Projets from "./pages/Projets";
 import Documents from "./pages/Documents";
+import Reunions from "./pages/Reunions";
+import FicheReunion from "./pages/FicheReunion";
+import Plus from "./pages/Plus";
 
 function Layout({ role }: { role: Role }) {
   const { user, logout } = useAuth();
   const { donnees, erreur, setEditer } = useDonnees();
   const ecranLarge = useEcranLarge();
   const { pathname } = useLocation();
-  const large = ecranLarge && pathname === "/";
+  const large = ecranLarge && (pathname === "/" || pathname.endsWith("/seance"));
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -46,13 +49,17 @@ function Layout({ role }: { role: Role }) {
         </>
       )}
 
+      {/* Téléphone : 5 onglets (Finances, Livrables, Projets dans « Plus ») ; PC : tout. */}
       <nav className="tabbar">
-        <NavLink to="/" end><Icon name="calendar" size={21} />Agenda</NavLink>
+        <NavLink to="/" end><Icon name="calendar" size={21} />{ecranLarge ? "Cockpit" : "Agenda"}</NavLink>
         <NavLink to="/actions"><Icon name="list" size={21} />Actions</NavLink>
-        <NavLink to="/finances"><Icon name="euro" size={21} />Finances</NavLink>
-        <NavLink to="/livrables"><Icon name="inbox" size={21} />Livrables</NavLink>
+        <NavLink to="/reunions"><Icon name="users" size={21} />Réunions</NavLink>
+        {ecranLarge && <NavLink to="/finances"><Icon name="euro" size={21} />Finances</NavLink>}
+        {ecranLarge && <NavLink to="/livrables"><Icon name="inbox" size={21} />Livrables</NavLink>}
         <NavLink to="/documents"><Icon name="folder" size={21} />Docs</NavLink>
-        <NavLink to="/projets"><Icon name="card" size={21} />Projets</NavLink>
+        {ecranLarge
+          ? <NavLink to="/projets"><Icon name="card" size={21} />Projets</NavLink>
+          : <NavLink to="/plus" className={({ isActive }) => (isActive || ["/finances", "/livrables", "/projets"].includes(pathname) ? "active" : "")}><Icon name="gear" size={21} />Plus</NavLink>}
       </nav>
     </div>
   );
@@ -85,6 +92,10 @@ function AuthedApp() {
           <Route path="livrables" element={<Livrables />} />
           <Route path="projets" element={<Projets />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="reunions" element={<Reunions />} />
+          <Route path="reunions/:id" element={<FicheReunion />} />
+          <Route path="reunions/:id/seance" element={<FicheReunion seance />} />
+          <Route path="plus" element={<Plus />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

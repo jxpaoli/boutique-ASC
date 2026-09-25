@@ -237,6 +237,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .cockpit-colonnes { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .app-main.large { max-width: 1400px; }
 
+/* Documents */
+.recherche { margin-bottom: 10px; border-radius: 999px; padding-left: 16px; }
+.tuiles-dossiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+@media (min-width: 720px) { .tuiles-dossiers { grid-template-columns: repeat(6, 1fr); } }
+.tuile-dossier {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px;
+  background: var(--card); border: 1px solid var(--bord); border-radius: var(--radius); box-shadow: var(--ombre);
+  color: var(--txt); text-decoration: none; font-size: 13px; text-align: center;
+}
+.tuile-dossier .ico { font-size: 24px; }
+.tuile-dossier .muted { font-size: 11.5px; }
+a.doc-item { color: var(--txt); text-decoration: none; }
+a.doc-item:hover .libelle { color: var(--accent); }
+.doc-item.absent { opacity: .6; }
+.doc-ico { font-size: 24px; flex: none; width: 32px; text-align: center; }
+
 /* Connexion */
 .login-wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(160deg, var(--marine), var(--marine-fonce)); }
 .login-card { width: 100%; max-width: 380px; background: var(--card); border-radius: 20px; padding: 26px 22px; text-align: center; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .6); }

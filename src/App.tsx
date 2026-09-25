@@ -12,6 +12,7 @@ import Actions from "./pages/Actions";
 import Finances from "./pages/Finances";
 import Livrables from "./pages/Livrables";
 import Projets from "./pages/Projets";
+import Documents from "./pages/Documents";
 
 function Layout({ role }: { role: Role }) {
   const { user, logout } = useAuth();
@@ -50,7 +51,8 @@ function Layout({ role }: { role: Role }) {
         <NavLink to="/actions"><Icon name="list" size={21} />Actions</NavLink>
         <NavLink to="/finances"><Icon name="euro" size={21} />Finances</NavLink>
         <NavLink to="/livrables"><Icon name="inbox" size={21} />Livrables</NavLink>
-        <NavLink to="/projets"><Icon name="folder" size={21} />Projets</NavLink>
+        <NavLink to="/documents"><Icon name="folder" size={21} />Docs</NavLink>
+        <NavLink to="/projets"><Icon name="card" size={21} />Projets</NavLink>
       </nav>
     </div>
   );
@@ -82,6 +84,7 @@ function AuthedApp() {
           <Route path="finances" element={<Finances />} />
           <Route path="livrables" element={<Livrables />} />
           <Route path="projets" element={<Projets />} />
+          <Route path="documents" element={<Documents />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

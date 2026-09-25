@@ -3,6 +3,7 @@ import { useDonnees } from "../donnees";
 import { aujourdhui, COULEUR_STATUT_LIVRABLE, LIB_STATUT_LIVRABLE } from "../format";
 import { BlocDate, FiltreProjets, LienDoc, PastilleProjet } from "../composants";
 import type { StatutLivrable } from "../types";
+import { documentDuLivrable, lienFichier } from "../onedrive";
 
 const ORDRE: StatutLivrable[] = ["a_faire", "en_cours", "envoye", "approuve"];
 
@@ -41,7 +42,10 @@ export default function Livrables() {
                         <span className={`badge ${COULEUR_STATUT_LIVRABLE[v.statut]}`}>{LIB_STATUT_LIVRABLE[v.statut]}</span>
                         {retard && <span className="badge rouge">En retard</span>}
                         {v.responsable && <span>{v.responsable}</span>}
-                        <LienDoc href={v.lien} />
+                        {v.lien ? <LienDoc href={v.lien} /> : (() => {
+                          const doc = documentDuLivrable(v.code, v.projet_id, donnees.documents);
+                          return doc ? <LienDoc href={lienFichier(donnees.parametres.onedrive_base, doc.chemin, doc.extension)}>📎 {doc.nom}</LienDoc> : null;
+                        })()}
                       </div>
                     </div>
                   </div>

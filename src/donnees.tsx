@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { db } from "./supabase";
-import type { Action, Echeance, EtapePeriode, Evenement, Livrable, Passage, Periode, Projet, Role, StatutAction } from "./types";
+import type { Action, DocumentProjet, Echeance, EtapePeriode, Evenement, Livrable, Passage, Periode, Projet, Role, StatutAction } from "./types";
 
 export interface Donnees {
   projets: Projet[];
@@ -11,6 +11,8 @@ export interface Donnees {
   etapes: EtapePeriode[];
   evenements: Evenement[];
   dernierPassage: Passage | null;
+  documents: DocumentProjet[];
+  parametres: Record<string, string>;
 }
 
 interface DonneesCtx {
@@ -44,7 +46,7 @@ export function DonneesProvider({ estAdmin, children }: { estAdmin: boolean; chi
 
   const recharger = useCallback(async () => {
     try {
-      const [projets, actions, echeances, livrables, periodes, etapes, evenements, passages] = await Promise.all([
+      const [projets, actions, echeances, livrables, periodes, etapes, evenements, passages, documents, parametres] = await Promise.all([
         lire<Projet>("projets", "acronyme"),
         lire<Action>("actions", "echeance"),
         lire<Echeance>("echeances", "date"),
@@ -54,8 +56,11 @@ export function DonneesProvider({ estAdmin, children }: { estAdmin: boolean; chi
         lire<Evenement>("actions_evenements", "id"),
         db.from("passages_secretaire").select("*").order("debut", { ascending: false }).limit(1)
           .then(({ data, error }) => { if (error) throw error; return (data ?? []) as Passage[]; }),
+        lire<DocumentProjet>("documents", "nom"),
+        lire<{ cle: string; valeur: string }>("parametres", "cle"),
       ]);
-      setDonnees({ projets, actions, echeances, livrables, periodes, etapes, evenements, dernierPassage: passages[0] ?? null });
+      setDonnees({ projets, actions, echeances, livrables, periodes, etapes, evenements, dernierPassage: passages[0] ?? null,
+        documents, parametres: Object.fromEntries(parametres.map((p) => [p.cle, p.valeur])) });
       setErreur("");
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Chargement impossible");

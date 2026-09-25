@@ -16,6 +16,7 @@ export interface Projet {
   budget_epci: number | null;
   couleur: string | null;
   dossier_onedrive: string | null;
+  dossier: string | null;
   actif: boolean;
 }
 
@@ -120,4 +121,16 @@ export interface Periode {
   certifie: number | null;
   paye: number | null;
   observations: string | null;
+}
+
+export interface DocumentProjet {
+  id: string;
+  projet_id: string | null;
+  dossier: string;
+  chemin: string;
+  nom: string;
+  extension: string | null;
+  taille: number | null;
+  modifie_le: string | null;
+  present: boolean;
 }

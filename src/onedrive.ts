@@ -1,15 +1,13 @@
 // Liens OneDrive à partir de l'adresse de base (paramètre onedrive_base, ex.
 // https://<tenant>-my.sharepoint.com/personal/<compte>/Documents/Projets européens).
-// Dossier : vue OneDrive (onedrive.aspx?id=…) ; fichier : ouverture directe (?web=1 pour Word/Excel/PowerPoint).
+// Dossiers et fichiers s'ouvrent par la vue OneDrive (onedrive.aspx?id=…).
 
 function decouper(base: string) {
   const url = new URL(base);
   const cheminServeur = decodeURIComponent(url.pathname);          // /personal/<compte>/Documents/Projets européens
   const site = url.origin + cheminServeur.slice(0, cheminServeur.indexOf("/Documents"));
-  return { origine: url.origin, site, cheminServeur };
+  return { site, cheminServeur };
 }
-
-const encoderChemin = (chemin: string) => chemin.split("/").map(encodeURIComponent).join("/");
 
 export function lienDossier(base: string | undefined, chemin: string): string | null {
   if (!base) return null;
@@ -29,11 +27,12 @@ export function documentDuLivrable<T extends { nom: string; projet_id: string | 
     .sort((a, b) => (b.modifie_le ?? "").localeCompare(a.modifie_le ?? ""))[0];
 }
 
-const OFFICE =new Set(["doc", "docx", "xls", "xlsx", "ppt", "pptx"]);
-
-export function lienFichier(base: string | undefined, chemin: string, extension: string | null): string | null {
+// Visionneuse OneDrive sur le fichier lui-même (id = fichier, parent = son dossier) : un lien « chemin » simple
+// retombait sur le dossier (constaté par Joseph le 25/09/2026). Word/Excel/PowerPoint s'y ouvrent en un clic.
+export function lienFichier(base: string | undefined, chemin: string, _extension?: string | null): string | null {
   if (!base) return null;
-  const { origine, cheminServeur } = decouper(base);
-  const url = `${origine}${encoderChemin(cheminServeur)}/${encoderChemin(chemin)}`;
-  return OFFICE.has(extension ?? "") ? `${url}?web=1` : url;
+  const { site, cheminServeur } = decouper(base);
+  const fichier = `${cheminServeur}/${chemin}`;
+  const parent = fichier.slice(0, fichier.lastIndexOf("/"));
+  return `${site}/_layouts/15/onedrive.aspx?id=${encodeURIComponent(fichier)}&parent=${encodeURIComponent(parent)}`;
 }

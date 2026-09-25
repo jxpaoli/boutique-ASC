@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useDonnees } from "../donnees";
 import { aujourdhui, date } from "../format";
 import { Anneau, Anneaux, calculer } from "../indicateurs";
@@ -22,6 +23,9 @@ export default function Cockpit() {
 
   return (
     <div className="cockpit">
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Link to="/rapport" className="btn" style={{ textDecoration: "none" }}>🖨️ Rapport direction</Link>
+      </div>
       <Anneaux ind={global} />
 
       <div className="cockpit-projets">

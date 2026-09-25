@@ -16,6 +16,7 @@ import Documents from "./pages/Documents";
 import Reunions from "./pages/Reunions";
 import FicheReunion from "./pages/FicheReunion";
 import Plus from "./pages/Plus";
+import Rapport from "./pages/Rapport";
 
 function Layout({ role }: { role: Role }) {
   const { user, logout } = useAuth();
@@ -96,6 +97,7 @@ function AuthedApp() {
           <Route path="reunions/:id" element={<FicheReunion />} />
           <Route path="reunions/:id/seance" element={<FicheReunion seance />} />
           <Route path="plus" element={<Plus />} />
+          <Route path="rapport" element={<Rapport />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

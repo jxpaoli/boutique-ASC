@@ -285,6 +285,34 @@ ol.odj { margin: 0; padding-left: 22px; display: flex; flex-direction: column; g
 .notes-etat { position: absolute; right: 8px; bottom: -18px; font-size: 11.5px; }
 .notes-lecture { margin-top: 6px; font-size: 13.5px; white-space: pre-line; color: var(--muted); }
 
+/* Rapport pour la direction (écran + impression) */
+.rapport-reglages { margin-bottom: 18px; }
+.feuille { background: #fff; color: #172033; border-radius: 12px; padding: 28px 30px; box-shadow: var(--ombre); font-size: 13.5px; line-height: 1.45; }
+.feuille h1 { font-size: 20px; margin: 0 0 2px; color: #0e3052; }
+.feuille h2 { font-size: 16px; color: #0e3052; border-bottom: 2px solid #0e3052; padding-bottom: 3px; margin: 22px 0 8px; }
+.feuille h2 .sous { font-weight: 500; font-size: 13px; color: #5d6a80; }
+.feuille h3 { font-size: 13.5px; margin: 12px 0 4px; }
+.feuille ul { margin: 0; padding-left: 20px; }
+.feuille .muted { color: #5d6a80; }
+.feuille-tete { display: flex; gap: 14px; align-items: center; }
+.feuille-tete img { width: 56px; height: 56px; border-radius: 10px; }
+.fiche-ligne { display: flex; flex-wrap: wrap; gap: 4px 16px; color: #5d6a80; font-size: 12.5px; }
+.feuille table.tab { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+.feuille table.tab th, .feuille table.tab td { border-bottom: 1px solid #e1e6ef; padding: 5px 6px; text-align: left; vertical-align: top; }
+.feuille table.tab th { background: #eef1f5; }
+.feuille td.alerte { color: #c62f2f; font-weight: 800; }
+.feuille-pied { margin-top: 24px; font-size: 11px; color: #5d6a80; border-top: 1px solid #e1e6ef; padding-top: 6px; }
+@media print {
+  body { background: #fff; }
+  .app-header, .tabbar, .fab, .no-print { display: none !important; }
+  .app-main { padding: 0 !important; max-width: none !important; }
+  .feuille { box-shadow: none; border-radius: 0; padding: 0; }
+  .projet-rapport { break-inside: auto; }
+  .feuille h2, .feuille h3 { break-after: avoid; }
+  .feuille tr { break-inside: avoid; }
+  @page { margin: 14mm; }
+}
+
 /* Connexion */
 .login-wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(160deg, var(--marine), var(--marine-fonce)); }
 .login-card { width: 100%; max-width: 380px; background: var(--card); border-radius: 20px; padding: 26px 22px; text-align: center; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .6); }

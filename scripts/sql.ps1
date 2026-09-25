@@ -1,4 +1,4 @@
-# Exécute une requête SQL sur la base Supabase via l'API Management.
+﻿# Exécute une requête SQL sur la base Supabase via l'API Management.
 # Usage : .\scripts\sql.ps1 -File chemin.sql   ou   .\scripts\sql.ps1 -Query "select 1"
 # Le jeton SUPABASE_ACCESS_TOKEN est lu dans .env.project.local et n'est jamais affiché.
 param([string]$File, [string]$Query, [switch]$ReadOnly)

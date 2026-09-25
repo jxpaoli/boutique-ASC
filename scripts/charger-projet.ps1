@@ -1,4 +1,4 @@
-# Charge un projet (fiche + actions, échéances, livrables, périodes) depuis un fichier JSON
+﻿# Charge un projet (fiche + actions, échéances, livrables, périodes) depuis un fichier JSON
 # produit à partir des mémoires du projet. Ne fait rien si l'acronyme existe déjà.
 # Usage : .\scripts\charger-projet.ps1 -Json seed_jason.json -Couleur "#7a3fb0"
 param([Parameter(Mandatory)][string]$Json, [string]$Couleur)

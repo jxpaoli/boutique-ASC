@@ -1,2 +1,2 @@
-[functions.manage-boutique-user]
+[functions.manage-gestion-user]
 verify_jwt = false

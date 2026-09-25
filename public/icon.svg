@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0f5128"/>
-  <circle cx="256" cy="256" r="155" fill="#1b7a3d" stroke="#c62828" stroke-width="24"/>
-  <text x="256" y="262" font-family="Arial, sans-serif" font-weight="800" font-size="128" fill="#ffffff" text-anchor="middle" dominant-baseline="central">ASC</text>
+  <rect width="512" height="512" fill="#1f3a68"/>
+  <g fill="#f5c518">
+    <circle cx="256" cy="116" r="18"/><circle cx="326" cy="135" r="18"/><circle cx="377" cy="186" r="18"/>
+    <circle cx="396" cy="256" r="18"/><circle cx="377" cy="326" r="18"/><circle cx="326" cy="377" r="18"/>
+    <circle cx="256" cy="396" r="18"/><circle cx="186" cy="377" r="18"/><circle cx="135" cy="326" r="18"/>
+    <circle cx="116" cy="256" r="18"/><circle cx="135" cy="186" r="18"/><circle cx="186" cy="135" r="18"/>
+  </g>
+  <text x="256" y="262" font-family="Arial, sans-serif" font-weight="800" font-size="104" fill="#ffffff" text-anchor="middle" dominant-baseline="central">PE</text>
 </svg>

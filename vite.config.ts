@@ -10,12 +10,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Boutique AS Casinca',
-        short_name: 'Boutique ASC',
-        description: "Suivi des packs d'équipement du club",
+        name: 'Projets européens – EPCI de Corse – Ports HC',
+        short_name: 'Projets UE',
+        description: 'Pilotage des projets européens de l’EPCI de Corse',
         lang: 'fr',
-        theme_color: '#0f5128',
-        background_color: '#0f5128',
+        theme_color: '#1f3a68',
+        background_color: '#1f3a68',
         display: 'standalone',
         start_url: '/',
         icons: [

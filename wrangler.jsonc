@@ -1,7 +1,7 @@
-// Config du Worker boutiqueasc : site statique (dist/) servi en mode SPA.
-// Adresse officielle unique : https://packcasinca.master.corsica (workers.dev desactive).
+// Config du Worker gestion-projets-europeens : site statique (dist/) servi en mode SPA.
+// Adresse officielle unique : https://europa.master.corsica (workers.dev desactive).
 {
-  "name": "boutiqueasc",
+  "name": "gestion-projets-europeens",
   "compatibility_date": "2026-07-01",
   "workers_dev": false,
   "assets": {
@@ -9,6 +9,6 @@
     "not_found_handling": "single-page-application"
   },
   "routes": [
-    { "pattern": "packcasinca.master.corsica", "custom_domain": true }
+    { "pattern": "europa.master.corsica", "custom_domain": true }
   ]
 }

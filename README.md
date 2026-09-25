@@ -1,37 +1,26 @@
-# Boutique AS Casinca
+# Projets européens – EPCI de Corse – Ports HC
 
-Application mobile de suivi des packs, joueurs, chèques, stock et commandes du club.
+Application de pilotage des projets européens (EASY2LOG, JASON, BLUE HUB…) : échéances, actions, livrables, finances par période.
 
-Technologies : React, Vite, Supabase et Cloudflare Workers.
+> En cours de construction. Remplace l'ancienne Boutique AS Casinca (supprimée le 25/09/2026).
 
-## Développement local
+## Rôles
+- `admin` : tout voir, tout créer, tout modifier.
+- `lecteur` : tableau de bord seul, en lecture, sur tous les projets.
+
+Les droits sont appliqués dans la base (RLS), pas seulement dans l'interface.
+
+## Architecture
+- React + Vite (PWA), déployé par GitHub Actions sur un Worker Cloudflare.
+- Supabase multiprojet (`lrittnexagnqcnnxbzrx`), schéma isolé `gestion_projets`.
+- Gestion des comptes : Edge Function `supabase/functions/manage-gestion-user` (clé `service_role` uniquement côté fonction).
+- Documents : OneDrive professionnel de l'EPCI de Corse, `Projets européens\<projet>\`. L'appli ne stocke que des liens.
+
+## Développement
 
 ```bash
 npm install
-copy .env.example .env
 npm run dev
 ```
 
-Renseigner dans `.env` l’URL et la clé publique du projet Supabase. Une clé `service_role` ne doit jamais être placée dans l’application web.
-
-## Supabase
-
-- Schéma isolé : `boutique_asc`
-- Migration : `supabase/migrations/202607130001_boutique_asc.sql`
-- Gestion sécurisée des comptes : `supabase/functions/manage-boutique-user`
-- Rôles applicatifs : `admin`, `supervision`, `user`
-
-Le schéma `boutique_asc` doit être ajouté aux schémas exposés par la Data API du projet.
-
-## Déploiement
-
-Un push sur `main` lance GitHub Actions puis déploie le Worker Cloudflare.
-
-Variables GitHub Actions requises :
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-
-Secret GitHub Actions requis :
-
-- `CLOUDFLARE_API_TOKEN`
+Variables publiques dans `.env` (voir `.env.example`). Aucune clé secrète dans l'appli web.

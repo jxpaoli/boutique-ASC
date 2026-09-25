@@ -1,130 +1,123 @@
-// Modèle de données — Boutique AS Casinca
+export type Role = "admin" | "lecteur" | "secretaire";
 
-export type Licence = string;
-
-// Remise d'un article : remis ou différé (le reste — à commander / récupérer — se gère dans le Stock)
-export type ArticleStatut = "remis" | "differe";
-
-export type Role = "admin" | "supervision" | "user";
-
-export interface PackArticle {
-  article: string;
-  taille: string;
-  statut: ArticleStatut;
-  motif?: string;
-}
-
-export interface Cheque {
-  montant?: number;
-  dateRecup?: string; // date de récupération (chèque en main)
-  datePrev: string;   // date d'encaissement prévu
-  recup: boolean;
-  enc: boolean;
-}
-
-export interface Joueur {
+export interface Projet {
   id: string;
-  categorie: string;
-  gardien: boolean;
-  licence: Licence;
-  nom: string;
-  prenom: string;
-  annee: string;
-  tel: string;
-  articles: PackArticle[];
-  remises: string[];
-  reglement: string;
-  cheques: Cheque[];
-  regOk: boolean;
-  regDate: string;
-  commentaires: string;
-  supprDemandee?: boolean; // suppression demandée (à valider par un superviseur)
-  supprPar?: string;
-  supprLe?: number;
-  createdAt?: number;
-  updatedAt?: number;
+  acronyme: string;
+  titre: string | null;
+  programme: string | null;
+  id_jems: string | null;
+  appel: string | null;
+  chef_de_file: string | null;
+  n_partenaire: string | null;
+  date_debut: string | null;
+  date_fin: string | null;
+  budget_projet: number | null;
+  feder_projet: number | null;
+  budget_epci: number | null;
+  couleur: string | null;
+  dossier_onedrive: string | null;
+  actif: boolean;
 }
 
-export interface Remise { nom: string; montant: number; }
-export interface CatalogueItem { nom: string; tailles: string[]; gererStock?: boolean }
-export interface LicenceOption {
-  code: string;
-  label: string;
-  tarif: number;
-  categoriesAutorisees: string[];
-  ajouteSac: boolean;
-  defaut?: boolean;
-}
-export interface CategorieAge { categorie: string; ageMin: number; ageMax: number }
-export interface ReglesMetier {
-  ageAdulte: number;
-  categoriesAge: CategorieAge[];
-  taillesParAge: Record<string, number>;
-  ordreTaillesAdultes: string[];
-  articleSac: string;
-  tailleSac: string;
-  reglementNonRegle: string;
-  chequesParReglement: Record<string, number>;
-  jourEncaissementCheques: number;
-  delaiPremierChequeJours: number;
-  libellesRoles: Record<Role, string>;
-  libellesCommandes: Record<string, string>;
-}
+export type StatutAction = "a_faire" | "en_cours" | "fait" | "abandonne";
+export type Priorite = "haute" | "normale" | "basse";
 
-export interface Config {
-  saison: string;
-  tarifs: Record<string, number>; // NOUVEAU / RENOUV. / LICENCE
-  sacSiNouvelle: boolean;
-  remises: Remise[];
-  categories: string[];
-  reglements: string[];
-  catalogue: CatalogueItem[];
-  packs: Record<string, string[]>;
-  packsGardien: Record<string, string[]>;
-  licences: LicenceOption[];
-  reglesMetier: ReglesMetier;
-}
-
-// Pré-inscription déposée par la personne via le QR (formulaire public)
-export interface Preinscription {
+export interface Action {
   id: string;
-  nom: string;
-  prenom: string;
-  annee: string; // date de naissance (ISO)
-  tel: string;
-  gardien: boolean;
-  categorie: string;
-  articles: { article: string; taille: string }[];
-  createdAt?: number;
+  projet_id: string;
+  libelle: string;
+  responsable: string | null;
+  echeance: string | null;
+  statut: StatutAction;
+  priorite: Priorite;
+  source: string | null;
+  notes: string | null;
+  origine: "admin" | "secretaire" | "import";
+  modifie_par_admin: boolean;
+  valide_par: "admin" | "secretaire" | null;
+  valide_le: string | null;
+  valide_source: string | null;
+  mail_ref: string | null;
+  updated_at: string;
 }
 
-// Commandes fournisseur
-export type CommandeStatut = "apasser" | "encours" | "recue";
-export interface CommandeLigne { article: string; taille: string; quantite: number }
-export interface Commande {
+export interface Evenement {
+  id: number;
+  action_id: string;
+  quand: string;
+  qui_email: string | null;
+  qui_role: "admin" | "secretaire" | "lecteur" | "systeme" | null;
+  type: "creation" | "statut" | "modification" | "commentaire";
+  statut_avant: StatutAction | null;
+  statut_apres: StatutAction | null;
+  source: string | null;
+  date_source: string | null;
+  message: string | null;
+}
+
+export type Etape = "declaration" | "controle" | "rapport_cf" | "paiement";
+
+export interface EtapePeriode {
   id: string;
-  statut: CommandeStatut;
-  lignes: CommandeLigne[];
-  fournisseur?: string;
-  dateCreation?: number;
-  dateCommande?: string;
-  dateReception?: string;
+  periode_id: string;
+  etape: Etape;
+  responsable: string | null;
+  date_limite: string | null;
+  fait_le: string | null;
+  montant: number | null;
+  lien: string | null;
+  notes: string | null;
 }
 
-// Stock : une entrée par article + taille
-export interface StockItem {
-  id: string; // `${article}__${taille}`
-  article: string;
-  taille: string;
-  quantite: number;
-  seuilMini: number;
+export interface Passage {
+  id: number;
+  debut: string;
+  fin: string | null;
+  mails_lus: number | null;
+  actions_creees: number;
+  actions_faites: number;
+  actions_rouvertes: number;
+  commentaires: number;
 }
 
-// Journal d'inventaire : trace d'un import Excel (horodatage, auteur, ce qui a changé)
-export interface Inventaire {
+export type TypeEcheance = "cdp" | "rapport" | "livrable" | "evenement" | "autre";
+export type StatutEcheance = "prevu" | "fait" | "annule";
+
+export interface Echeance {
   id: string;
-  date: string;    // ISO (horodaté)
-  user: string;    // email de l'auteur
-  comptees: number; // nb de références comptées (case « réelle » remplie)
-  lignes: { article: string; taille: string; avant: number; apres: number }[]; // uniquement les modifications
+  projet_id: string;
+  type: TypeEcheance;
+  libelle: string;
+  date: string;
+  lieu: string | null;
+  statut: StatutEcheance;
+  lien: string | null;
+  notes: string | null;
+}
+
+export type StatutLivrable = "a_faire" | "en_cours" | "envoye" | "approuve";
+
+export interface Livrable {
+  id: string;
+  projet_id: string;
+  code: string | null;
+  titre: string;
+  responsable: string | null;
+  echeance: string | null;
+  statut: StatutLivrable;
+  lien: string | null;
+  notes: string | null;
+}
+
+export interface Periode {
+  id: string;
+  projet_id: string;
+  numero: number;
+  date_debut: string | null;
+  date_fin: string | null;
+  prevu: number | null;
+  declare: number | null;
+  certifie: number | null;
+  paye: number | null;
+  observations: string | null;
 }

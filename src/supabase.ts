@@ -15,4 +15,4 @@ export const supabase = createClient(url, publishableKey, {
   },
 });
 
-export const boutiqueDb = supabase.schema("boutique_asc");
+export const db = supabase.schema("gestion_projets");

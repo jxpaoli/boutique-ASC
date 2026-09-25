@@ -1,17 +1,20 @@
 import { createClient, type User } from "npm:@supabase/supabase-js@2.102.0";
 
-type Role = "admin" | "supervision" | "user";
+type Role = "admin" | "lecteur";
 type Action = "create" | "set-role" | "remove-access" | "set-password";
 
+const SCHEMA = "gestion_projets";
+
+// Adresses autorisées : secret ALLOWED_ORIGINS (liste séparée par des virgules), plus le poste local.
 const allowedOrigins = new Set([
-  "https://packcasinca.master.corsica",
+  ...(Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((o) => o.trim()).filter(Boolean),
   "http://localhost:5173",
 ]);
 
 function headers(req: Request) {
   const origin = req.headers.get("origin") ?? "";
   return {
-    "Access-Control-Allow-Origin": allowedOrigins.has(origin) ? origin : "https://packcasinca.master.corsica",
+    "Access-Control-Allow-Origin": allowedOrigins.has(origin) ? origin : "null",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Content-Type": "application/json",
@@ -48,9 +51,9 @@ Deno.serve(async (req: Request) => {
     const { data: authData, error: authError } = await admin.auth.getUser(token);
     if (authError || !authData.user) return response(req, { ok: false, error: "Session invalide" }, 401);
 
-    const { data: caller } = await admin.schema("boutique_asc").from("memberships")
-      .select("role,active").eq("user_id", authData.user.id).maybeSingle();
-    if (!caller?.active || caller.role !== "admin") {
+    const { data: caller } = await admin.schema(SCHEMA).from("roles_appli")
+      .select("role").eq("user_id", authData.user.id).maybeSingle();
+    if (caller?.role !== "admin") {
       return response(req, { ok: false, error: "Droits administrateur requis" }, 403);
     }
 
@@ -59,7 +62,7 @@ Deno.serve(async (req: Request) => {
     if (!body.action || !email || !/^\S+@\S+\.\S+$/.test(email)) {
       return response(req, { ok: false, error: "Demande ou e-mail invalide" }, 400);
     }
-    if (body.role && !["admin", "supervision", "user"].includes(body.role)) {
+    if (body.role && !["admin", "lecteur"].includes(body.role)) {
       return response(req, { ok: false, error: "Rôle invalide" }, 400);
     }
 
@@ -67,26 +70,34 @@ Deno.serve(async (req: Request) => {
     const existing = Boolean(user);
 
     if (body.action === "create") {
-      if (!body.password || body.password.length < 8 || !body.role) {
-        return response(req, { ok: false, error: "Mot de passe de 8 caractères minimum et rôle requis" }, 400);
-      }
+      if (!body.role) return response(req, { ok: false, error: "Rôle requis" }, 400);
+      // Un compte déjà présent dans la base partagée est seulement rattaché : son mot de passe n'est pas touché.
       if (!user) {
+        if (!body.password || body.password.length < 8) {
+          return response(req, { ok: false, error: "Mot de passe de 8 caractères minimum requis" }, 400);
+        }
         const created = await admin.auth.admin.createUser({ email, password: body.password, email_confirm: true });
         if (created.error) throw created.error;
         user = created.data.user;
       }
     }
 
-    if (!user) return response(req, { ok: false, error: "Ce compte Supabase n’existe pas" }, 404);
+    if (!user) return response(req, { ok: false, error: "Ce compte n’existe pas" }, 404);
+
+    // La base Auth est partagée entre plusieurs applis : on n'agit que sur les comptes inscrits dans celle-ci.
+    const { data: member } = await admin.schema(SCHEMA).from("roles_appli")
+      .select("role").eq("user_id", user.id).maybeSingle();
 
     if (body.action === "remove-access") {
       if (user.id === authData.user.id) return response(req, { ok: false, error: "Tu ne peux pas retirer ton propre accès" }, 400);
-      const removed = await admin.schema("boutique_asc").from("memberships").delete().eq("user_id", user.id);
+      if (!member) return response(req, { ok: false, error: "Ce compte n’a pas accès à l’appli" }, 404);
+      const removed = await admin.schema(SCHEMA).from("roles_appli").delete().eq("user_id", user.id);
       if (removed.error) throw removed.error;
       return response(req, { ok: true });
     }
 
     if (body.action === "set-password") {
+      if (!member) return response(req, { ok: false, error: "Ce compte n’a pas accès à l’appli" }, 404);
       if (!body.password || body.password.length < 8) return response(req, { ok: false, error: "8 caractères minimum" }, 400);
       const updated = await admin.auth.admin.updateUserById(user.id, { password: body.password });
       if (updated.error) throw updated.error;
@@ -94,11 +105,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!body.role) return response(req, { ok: false, error: "Rôle requis" }, 400);
-    const saved = await admin.schema("boutique_asc").from("memberships").upsert({
+    if (user.id === authData.user.id && body.role !== "admin") {
+      return response(req, { ok: false, error: "Tu ne peux pas retirer tes propres droits d’administrateur" }, 400);
+    }
+    const saved = await admin.schema(SCHEMA).from("roles_appli").upsert({
       user_id: user.id,
       email,
       role: body.role,
-      active: true,
       updated_at: new Date().toISOString(),
     });
     if (saved.error) throw saved.error;

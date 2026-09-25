@@ -34,9 +34,9 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <div className="login-logo"><img src="/icon.svg" alt="AS Casinca" /></div>
-        <h1>Boutique AS Casinca</h1>
-        <p className="muted">Connecte-toi pour continuer</p>
+        <div className="login-logo"><img src="/icon.svg" alt="Projets européens" /></div>
+        <h1>Projets européens</h1>
+        <p className="muted">EPCI de Corse – Ports HC</p>
 
         <label>E-mail</label>
         <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />

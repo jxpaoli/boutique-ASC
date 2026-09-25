@@ -132,7 +132,11 @@ function Ajouter-PointReunion([Parameter(Mandatory)][string]$Reunion, [Parameter
   (Api POST "reunion_points" $corps)[0]
 }
 
-# Journal des scans : un passage par scan de la messagerie.
+# Journal des scans : un passage par scan de la messagerie. Get-DernierPassage donne le point de départ du suivant.
+function Get-DernierPassage {
+  Api GET "passages_secretaire?select=id,debut,fin,periode_du,periode_au,mails_lus&fin=not.is.null&order=debut.desc&limit=1"
+}
+
 function Debut-Passage([string]$Du, [string]$Au) {
   $corps = @{}
   if ($Du) { $corps.periode_du = $Du }

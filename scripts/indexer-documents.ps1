@@ -1,5 +1,5 @@
 ﻿# Indexe les documents OneDrive des projets dans gestion_projets.documents (noms, dossiers, dates ; pas le contenu).
-# Ne lit que les dossiers de travail (01- à 06-, 99-archives) ; ignore pieces-jointes, docs, data, identite, .claude.
+# Lit les dossiers de travail (01- à 06-, 99-), identite, pieces-jointes et la boîte à outils _commun ; ignore docs, data, .claude.
 # Un fichier disparu est marqué present = false (lien « introuvable » dans l'appli), jamais supprimé de force.
 # Usage : .\scripts\indexer-documents.ps1
 param([string]$Racine = "$env:USERPROFILE\OneDrive - EPCI DE CORSE\Projets européens")
@@ -8,28 +8,39 @@ $ErrorActionPreference = "Stop"
 $projets = & (Join-Path $PSScriptRoot "sql.ps1") -ReadOnly -Query "select id, dossier from gestion_projets.projets where dossier is not null" | ConvertFrom-Json
 
 $lignes = New-Object System.Collections.Generic.List[object]
-foreach ($p in $projets) {
-  $base = Join-Path $Racine $p.dossier
-  if (-not (Test-Path -LiteralPath $base)) { Write-Warning "Dossier absent : $base"; continue }
-  Get-ChildItem -LiteralPath $base -Directory | Where-Object { $_.Name -match '^(0[1-9]|99)-' } | ForEach-Object {
-    $dossier = $_.Name
-    # Métadonnées seules : ne force pas le téléchargement des fichiers « à la demande ».
-    Get-ChildItem -LiteralPath $_.FullName -Recurse -File -Force | Where-Object {
-      $_.Name -notmatch '^(~\$|\.|desktop\.ini$|Thumbs\.db$)' -and -not ($_.Attributes -band [IO.FileAttributes]::Hidden)
-    } | ForEach-Object {
-      $lignes.Add([ordered]@{
-        projet_id  = $p.id
-        dossier    = $dossier
-        chemin     = $_.FullName.Substring($Racine.Length + 1).Replace('\', '/')
-        nom        = $_.Name
-        extension  = $_.Extension.TrimStart('.').ToLower()
-        taille     = $_.Length
-        modifie_le = $_.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")
-      })
-    }
+
+# Ajoute les fichiers d'un dossier (récursif). Métadonnées seules : ne force pas le téléchargement des fichiers « à la demande ».
+function Ajouter([string]$chemin, $projetId, [string]$dossier, [string]$exclure) {
+  Get-ChildItem -LiteralPath $chemin -Recurse -File -Force | Where-Object {
+    $_.Name -notmatch '^(~\$|\.|desktop\.ini$|Thumbs\.db$)' -and -not ($_.Attributes -band [IO.FileAttributes]::Hidden) -and
+    -not ($exclure -and $_.FullName -like "$exclure*")
+  } | ForEach-Object {
+    $lignes.Add([ordered]@{
+      projet_id  = $projetId
+      dossier    = $dossier
+      chemin     = $_.FullName.Substring($Racine.Length + 1).Replace('\', '/')
+      nom        = $_.Name
+      extension  = $_.Extension.TrimStart('.').ToLower()
+      taille     = $_.Length
+      modifie_le = $_.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    })
   }
 }
 
+# Projets : dossiers de travail (01- à 06-, 99-), identite, pieces-jointes (visibles par l'admin seul, cf. RLS).
+foreach ($p in $projets) {
+  $base = Join-Path $Racine $p.dossier
+  if (-not (Test-Path -LiteralPath $base)) { Write-Warning "Dossier absent : $base"; continue }
+  Get-ChildItem -LiteralPath $base -Directory | Where-Object { $_.Name -match '^((0[1-9]|99)-|identite$|pieces-jointes$)' } | ForEach-Object {
+    Ajouter $_.FullName $p.id $_.Name $null
+  }
+}
+
+# Boîte à outils commune (aucun projet) : modèles (sans leurs sources), logos, kit du programme.
+foreach ($s in 'modeles', 'logos', 'kit-programme') {
+  $c = Join-Path $Racine "_commun\$s"
+  if (Test-Path -LiteralPath $c) { Ajouter $c $null "commun/$s" (Join-Path $c 'source') }
+}
 $json = ConvertTo-Json -InputObject $lignes.ToArray() -Depth 3 -Compress
 if ($json.Contains('$idx$')) { throw "Délimiteur `$idx`$ présent dans les noms de fichiers." }
 $sql = @"

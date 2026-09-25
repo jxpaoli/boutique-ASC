@@ -18,7 +18,6 @@ dist-ssr
 !.env.project.example
 
 # Notes de travail locales (hors dépôt)
-AUDIT_BOUTIQUE.md
 ISOLATION_ACCES_PROMPT.md
 
 # Editor directories and files
